@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  background-color: #0f172a;
+}
+
+body {
+  @apply bg-slate-950 text-slate-50 min-h-screen antialiased;
+}
+
+::selection {
+  @apply bg-brand-300/60 text-slate-950;
+}
+
+a {
+  @apply text-brand-300 hover:text-brand-200 transition-colors;
+}
+
+.glass-panel {
+  @apply bg-slate-900/80 border border-slate-800/80 backdrop-blur-md;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0.75rem);
+}
