@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { Route } from "next";
 import {
   Activity,
   Compass,
@@ -11,7 +12,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const items = [
+type NavItem = {
+  href: Route;
+  label: string;
+  icon: typeof Dumbbell;
+};
+
+const items: NavItem[] = [
   { href: "/train", label: "Train", icon: Dumbbell },
   { href: "/wizard", label: "Wizard", icon: Compass },
   { href: "/kpi", label: "KPI", icon: Activity },

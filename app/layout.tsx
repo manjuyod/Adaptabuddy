@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
@@ -13,11 +13,14 @@ export const metadata: Metadata = {
   title: "Adaptabuddy",
   description: "Adaptive training companion with offline-first Supabase stack.",
   manifest: "/manifest.webmanifest",
-  themeColor: "#0f172a",
   icons: {
     icon: "/icons/icon-192.png",
     apple: "/icons/icon-192.png"
   }
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f172a"
 };
 
 export default function RootLayout({

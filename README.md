@@ -15,7 +15,7 @@ Adaptive training companion scaffold built with Next.js 15 App Router, TypeScrip
 ## App structure
 - `/login`: Supabase email/password + Google OAuth stub
 - `/train`, `/wizard`, `/kpi`, `/settings`, `/library/exercises`: mobile-first pages rendered via `app/(app)/` layout with bottom navigation
-- Middleware + API callback for Supabase session cookies: `middleware.ts`, `app/api/auth/callback/route.ts`
+- Middleware + auth callback for Supabase session cookies: `middleware.ts`, `app/auth/callback/route.ts`
 - PWA wiring: `app/manifest.ts`, `public/sw.js`, `app/providers.tsx`
 
 ## Database setup (Supabase)

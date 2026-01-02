@@ -31,16 +31,22 @@ export default function WizardPage() {
         </div>
 
         <div className="space-y-3">
-          <label className="text-xs uppercase tracking-wide text-slate-400">
+          <label
+            className="text-xs uppercase tracking-wide text-slate-400"
+            htmlFor="primary-goal"
+          >
             Primary goal
           </label>
-          <Input placeholder="e.g. Rebuild quad strength, low impact" />
+          <Input
+            id="primary-goal"
+            placeholder="e.g. Rebuild quad strength, low impact"
+          />
         </div>
 
         <div className="space-y-3">
-          <label className="text-xs uppercase tracking-wide text-slate-400">
+          <p className="text-xs uppercase tracking-wide text-slate-400">
             Constraints
-          </label>
+          </p>
           <div className="flex flex-wrap gap-2">
             {filters.map((filter) => (
               <Chip key={filter.label}>{filter.label}</Chip>
@@ -56,9 +62,9 @@ export default function WizardPage() {
         </div>
 
         <div className="space-y-3">
-          <label className="text-xs uppercase tracking-wide text-slate-400">
+          <p className="text-xs uppercase tracking-wide text-slate-400">
             Medical considerations
-          </label>
+          </p>
           <div className="grid gap-2">
             <div className="flex items-center gap-2 text-sm text-slate-200">
               <Stethoscope size={18} className="text-amber-300" />

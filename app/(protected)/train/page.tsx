@@ -143,5 +143,3 @@ export default function TrainPage() {
     </div>
   );
 }
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
