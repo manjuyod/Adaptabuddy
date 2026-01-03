@@ -367,7 +367,8 @@ export function ExercisesClient({ exercises, muscleGroups }: ExercisesClientProp
               tabIndex={0}
               onClick={() => setSelectedExercise(exercise)}
               onKeyDown={(event) => {
-                if (event.key === "Enter") {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
                   setSelectedExercise(exercise);
                 }
               }}

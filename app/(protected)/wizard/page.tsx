@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { isProgramEmpty } from "@/lib/auth/redirect";
 import { getSessionWithProfile } from "@/lib/supabase/server";
 import { summarizeTemplate } from "@/lib/wizard/engine";
+import { ensureInjuryIds } from "@/lib/wizard/injuries";
 import type { WizardInjury } from "@/lib/wizard/types";
 import WizardClient from "./wizard-client";
 
@@ -10,7 +11,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const parseInjuries = (value: unknown): WizardInjury[] => {
   if (!Array.isArray(value)) return [];
-  return value
+  const parsed = value
     .map((entry) => {
       if (!isRecord(entry) || typeof entry.name !== "string") return null;
       const severity =
@@ -18,9 +19,12 @@ const parseInjuries = (value: unknown): WizardInjury[] => {
           ? Math.min(5, Math.max(1, Math.round(entry.severity)))
           : 3;
       const notes = typeof entry.notes === "string" ? entry.notes : undefined;
-      return { name: entry.name, severity, notes };
+      const id = typeof entry.id === "string" ? entry.id : undefined;
+      return { id, name: entry.name, severity, notes };
     })
     .filter(Boolean) as WizardInjury[];
+
+  return ensureInjuryIds(parsed);
 };
 
 export default async function WizardPage() {

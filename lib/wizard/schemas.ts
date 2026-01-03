@@ -1,9 +1,6 @@
 import { z } from "zod";
-import type {
-  EquipmentOption,
-  FatigueProfile,
-  WizardPayload
-} from "./types";
+import { ensureInjuryIds } from "./injuries";
+import type { EquipmentOption, FatigueProfile, WizardPayload } from "./types";
 
 export const equipmentOptions = [
   "barbell",
@@ -18,6 +15,7 @@ export const dayOptions = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as c
 export const fatigueProfileSchema = z.enum(["low", "medium", "high"]);
 
 export const injurySchema = z.object({
+  id: z.string().min(1).optional(),
   name: z.string().min(1),
   severity: z.number().int().min(1).max(5),
   notes: z.string().max(200).optional()
@@ -47,7 +45,8 @@ export type WizardPayloadInput = z.infer<typeof wizardPayloadSchema>;
 export const normalizeWizardPayload = (value: unknown): WizardPayload => {
   const parsed = wizardPayloadSchema.parse(value);
   return {
-    ...parsed
+    ...parsed,
+    injuries: ensureInjuryIds(parsed.injuries)
   };
 };
 

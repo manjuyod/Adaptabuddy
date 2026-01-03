@@ -196,8 +196,7 @@ const applyEvents = async (params: {
       let query = supabase.from("training_sets").delete().eq("exercise_id", payload.exercise_id);
       if (payload.set_id) {
         query = query.eq("id", payload.set_id);
-      }
-      if (typeof payload.set_index === "number") {
+      } else if (typeof payload.set_index === "number") {
         query = query.eq("set_index", payload.set_index);
       }
       const { error } = await query;

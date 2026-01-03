@@ -28,7 +28,14 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const profile = await ensureUserProfile(supabase, data.user);
+  let profile;
+  try {
+    profile = await ensureUserProfile(supabase, data.user);
+  } catch {
+    return NextResponse.redirect(new URL("/login?error=profile", request.url), {
+      headers: response.headers
+    });
+  }
   const safeNext =
     resolveNextPath(request.nextUrl.searchParams.get("next")) ??
     defaultRedirectForProfile(profile);

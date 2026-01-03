@@ -18,7 +18,9 @@
     "jsx": "preserve",
     "incremental": true,
     "types": [
-      "node"
+      "node",
+      "vitest",
+      "vitest/globals"
     ],
     "baseUrl": ".",
     "paths": {

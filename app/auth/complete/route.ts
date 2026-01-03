@@ -17,7 +17,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const profile = await ensureUserProfile(supabase, data.user);
+  let profile;
+  try {
+    profile = await ensureUserProfile(supabase, data.user);
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to load profile" },
+      { status: 500, headers: response.headers }
+    );
+  }
 
   let nextParam: string | null = null;
   try {

@@ -35,7 +35,7 @@ const payload: WizardPayload = {
 describe("wizard engine", () => {
   it("builds preview with warnings for injuries", () => {
     const preview = buildPreview(
-      { ...payload, injuries: [{ name: "knee", severity: 4 }] },
+      { ...payload, injuries: [{ id: "injury-knee", name: "knee", severity: 4 }] },
       [baseTemplate]
     );
 

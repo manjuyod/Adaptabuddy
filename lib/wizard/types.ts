@@ -3,6 +3,7 @@ export type FatigueProfile = "low" | "medium" | "high";
 export type EquipmentOption = "barbell" | "dumbbell" | "cables" | "machines" | "home-gym";
 
 export type WizardInjury = {
+  id: string;
   name: string;
   severity: number;
   notes?: string;
