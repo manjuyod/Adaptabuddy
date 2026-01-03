@@ -17,8 +17,10 @@ import type {
   PlannedSession,
   PreviewResult,
   TemplateSummary,
+  FatigueProfile,
   WizardInjury
 } from "@/lib/wizard/types";
+import { createInjuryId, ensureInjuryIds } from "@/lib/wizard/injuries";
 import {
   AlertTriangle,
   CheckCircle,
@@ -47,7 +49,9 @@ const isEquipmentOption = (value: unknown): value is EquipmentOption =>
 const pullNumber = (value: unknown, fallback: number) =>
   typeof value === "number" && Number.isFinite(value) ? value : fallback;
 
-const pullArray = (value: unknown) => (Array.isArray(value) ? value : []);
+const pullArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+const isPreferredDay = (value: unknown): value is (typeof dayOptions)[number] =>
+  typeof value === "string" && dayOptions.includes(value as (typeof dayOptions)[number]);
 
 export function WizardClient({
   userId,
@@ -58,20 +62,22 @@ export function WizardClient({
 }: WizardClientProps) {
   const { toast } = useToast();
   const [step, setStep] = useState(0);
-  const [injuries, setInjuries] = useState<WizardInjury[]>(initialInjuries);
+  const [injuries, setInjuries] = useState<WizardInjury[]>(() =>
+    ensureInjuryIds(initialInjuries)
+  );
   const [newInjuryName, setNewInjuryName] = useState("");
   const [newInjurySeverity, setNewInjurySeverity] = useState(3);
-  const initialFatigue =
-    typeof initialPreferences.fatigue_profile === "string" &&
-    fatigueProfiles.includes(initialPreferences.fatigue_profile as string)
-      ? (initialPreferences.fatigue_profile as typeof fatigueProfiles[number])
-      : ("medium" as const);
-  const [fatigueProfile, setFatigueProfile] =
-    useState<typeof fatigueProfiles[number]>(initialFatigue);
+  const isFatigueProfile = (value: unknown): value is FatigueProfile =>
+    typeof value === "string" &&
+    (fatigueProfiles as readonly string[]).includes(value);
+  const initialFatigue: FatigueProfile = isFatigueProfile(initialPreferences.fatigue_profile)
+    ? initialPreferences.fatigue_profile
+    : "medium";
+  const [fatigueProfile, setFatigueProfile] = useState<FatigueProfile>(initialFatigue);
 
   const initialEquipment = pullArray(initialPreferences.equipment_profile).filter(
     isEquipmentOption
-  ) as EquipmentOption[];
+  );
   const [equipment, setEquipment] = useState<EquipmentOption[]>(initialEquipment);
 
   const [selectedPrograms, setSelectedPrograms] = useState<ProgramSelection[]>(
@@ -87,9 +93,7 @@ export function WizardClient({
     pullNumber(initialPreferences.max_session_minutes, 60)
   );
   const [preferredDays, setPreferredDays] = useState<string[]>(
-    pullArray(initialPreferences.preferred_days).filter((day) =>
-      dayOptions.includes(day as (typeof dayOptions)[number])
-    ) as string[]
+    pullArray(initialPreferences.preferred_days).filter(isPreferredDay)
   );
   const [confirmOverwrite, setConfirmOverwrite] = useState(false);
 
@@ -99,11 +103,6 @@ export function WizardClient({
   );
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-
-  const templatesById = useMemo(
-    () => new Map(templateSummaries.map((template) => [template.id, template])),
-    [templateSummaries]
-  );
 
   const steps = [
     "Constraints",
@@ -156,7 +155,7 @@ const updateProgramWeight = (templateId: number, weight: number) => {
     }
     setInjuries((prev) => [
       ...prev,
-      { name: newInjuryName.trim(), severity: newInjurySeverity }
+      { id: createInjuryId(), name: newInjuryName.trim(), severity: newInjurySeverity }
     ]);
     setNewInjuryName("");
     setNewInjurySeverity(3);
@@ -431,6 +430,7 @@ const updateProgramWeight = (templateId: number, weight: number) => {
               const weight =
                 selectedPrograms.find((program) => program.template_id === template.id)
                   ?.weight_override ?? 1;
+              const weightInputId = `template-weight-${template.id}`;
               return (
                 <Card
                   key={template.id}
@@ -459,10 +459,14 @@ const updateProgramWeight = (templateId: number, weight: number) => {
                   </div>
                   {selected && (
                     <div className="flex items-center gap-2">
-                      <label className="text-xs uppercase tracking-wide text-slate-400">
+                      <label
+                        className="text-xs uppercase tracking-wide text-slate-400"
+                        htmlFor={weightInputId}
+                      >
                         Weight
                       </label>
                       <Input
+                        id={weightInputId}
                         type="number"
                         min={0.5}
                         max={2}
@@ -643,9 +647,9 @@ const updateProgramWeight = (templateId: number, weight: number) => {
                 <span className="font-semibold text-white">{preview.recoveryLoad}</span>
               </div>
               {preview.warnings.length > 0 && (
-                <div className="space-y-2 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-100">
-                  {preview.warnings.map((warning) => (
-                    <div key={warning.message} className="flex items-center gap-2">
+                <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">
+                  {preview.warnings.map((warning, index) => (
+                    <div key={index} className="flex items-center gap-2">
                       <AlertTriangle size={16} />
                       <span>{warning.message}</span>
                     </div>

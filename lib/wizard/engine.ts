@@ -59,7 +59,7 @@ export const deriveSeed = (payload: WizardPayload, templateIds: number[]) =>
 
 const walkForSets = (node: unknown): number => {
   if (Array.isArray(node)) {
-    return node.reduce((sum, item) => sum + walkForSets(item), 0);
+    return (node as unknown[]).reduce<number>((sum, item) => sum + walkForSets(item), 0);
   }
 
   if (isRecord(node)) {
@@ -97,10 +97,10 @@ export const countSessionsInTemplate = (templateJson: unknown): number => {
 
   // fallback: count objects that look like sessions
   const sessionLike = Object.values(templateJson).filter(
-    (value) => Array.isArray(value) && value.every((item) => isRecord(item))
+    (value): value is unknown[] => Array.isArray(value) && value.every((item) => isRecord(item))
   );
   if (sessionLike.length > 0) {
-    return (sessionLike[0] as unknown[]).length;
+    return sessionLike[0].length;
   }
 
   return 0;
@@ -108,11 +108,25 @@ export const countSessionsInTemplate = (templateJson: unknown): number => {
 
 const focusFromTemplate = (templateJson: unknown): string | null => {
   if (!isRecord(templateJson)) return null;
+
+  const dayZero = Array.isArray((templateJson as { microcycle_days?: unknown }).microcycle_days)
+    ? ((templateJson as { microcycle_days?: unknown[] }).microcycle_days ?? [])[0]
+    : null;
+  const splitZero = Array.isArray((templateJson as { split?: unknown }).split)
+    ? ((templateJson as { split?: unknown[] }).split ?? [])[0]
+    : null;
+  const scheduleZero = Array.isArray((templateJson as { schedule?: unknown }).schedule)
+    ? ((templateJson as { schedule?: unknown[] }).schedule ?? [])[0]
+    : null;
+  const sessionsZero = Array.isArray((templateJson as { sessions?: unknown }).sessions)
+    ? ((templateJson as { sessions?: unknown[] }).sessions ?? [])[0]
+    : null;
+
   const candidates = [
-    (templateJson.microcycle_days as unknown)?.[0],
-    (templateJson.split as unknown)?.[0],
-    (templateJson.schedule as unknown)?.[0],
-    (templateJson.sessions as unknown)?.[0]
+    dayZero,
+    splitZero,
+    scheduleZero,
+    sessionsZero
   ];
 
   for (const candidate of candidates) {

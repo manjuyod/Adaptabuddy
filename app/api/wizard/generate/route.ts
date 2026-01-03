@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isProgramEmpty } from "@/lib/auth/redirect";
 import {
   createSupabaseRouteClient,
-  ensureUserProfile
+  ensureUserProfile,
+  type SupabaseClientType
 } from "@/lib/supabase/server";
 import { buildActiveProgramSnapshot } from "@/lib/wizard/engine";
 import { normalizeWizardPayload } from "@/lib/wizard/schemas";
@@ -12,7 +13,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 export async function POST(request: NextRequest) {
   const response = new NextResponse();
-  const supabase = createSupabaseRouteClient(request, response);
+  const supabase: SupabaseClientType = createSupabaseRouteClient(request, response);
 
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError || !authData.user) {
@@ -26,7 +27,10 @@ export async function POST(request: NextRequest) {
 
   let payload = null;
   try {
-    const body = await request.json();
+    const body: unknown = await request.json();
+    if (!isRecord(body)) {
+      throw new Error("Invalid payload");
+    }
     payload = normalizeWizardPayload({
       ...body,
       user_id: authData.user.id

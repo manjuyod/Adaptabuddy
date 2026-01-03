@@ -18,6 +18,12 @@ export function registerServiceWorker() {
   if (document.readyState === "complete") {
     void register();
   } else {
-    window.addEventListener("load", register, { once: true });
+    window.addEventListener(
+      "load",
+      () => {
+        void register();
+      },
+      { once: true }
+    );
   }
 }

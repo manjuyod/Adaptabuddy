@@ -1,11 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createSupabaseRouteClient } from "@/lib/supabase/server";
+import { createSupabaseRouteClient, type SupabaseClientType } from "@/lib/supabase/server";
 import { buildPreview } from "@/lib/wizard/engine";
 import { normalizeWizardPayload } from "@/lib/wizard/schemas";
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
 export async function POST(request: NextRequest) {
   const response = NextResponse.next();
-  const supabase = createSupabaseRouteClient(request, response);
+  const supabase: SupabaseClientType = createSupabaseRouteClient(request, response);
 
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError || !authData.user) {
@@ -14,10 +17,12 @@ export async function POST(request: NextRequest) {
       { status: 401, headers: response.headers }
     );
   }
-
   let payload = null;
   try {
-    const body = await request.json();
+    const body: unknown = await request.json();
+    if (!isRecord(body)) {
+      throw new Error("Invalid payload");
+    }
     payload = normalizeWizardPayload({
       ...body,
       user_id: authData.user.id
@@ -27,7 +32,6 @@ export async function POST(request: NextRequest) {
       { error: "Invalid payload", details: error instanceof Error ? error.message : String(error) },
       { status: 400, headers: response.headers }
     );
-  }
   }
 
   const templateIds = payload.selected_programs.map((program) => program.template_id);
