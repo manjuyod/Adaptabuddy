@@ -1,119 +1,57 @@
-"use client";
+import { redirect } from "next/navigation";
+import { isProgramEmpty } from "@/lib/auth/redirect";
+import { getSessionWithProfile } from "@/lib/supabase/server";
+import { summarizeTemplate } from "@/lib/wizard/engine";
+import type { WizardInjury } from "@/lib/wizard/types";
+import WizardClient from "./wizard-client";
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Chip } from "@/components/ui/chip";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/toast-provider";
-import { AlertTriangle, HeartPulse, Sparkles, Stethoscope } from "lucide-react";
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
 
-const filters = [
-  { label: "No barbells", type: "equipment" },
-  { label: "Protect knees", type: "injury" },
-  { label: "Low impact", type: "style" },
-  { label: "Dumbbells OK", type: "equipment" }
-];
+const parseInjuries = (value: unknown): WizardInjury[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (!isRecord(entry) || typeof entry.name !== "string") return null;
+      const severity =
+        typeof entry.severity === "number" && Number.isFinite(entry.severity)
+          ? Math.min(5, Math.max(1, Math.round(entry.severity)))
+          : 3;
+      const notes = typeof entry.notes === "string" ? entry.notes : undefined;
+      return { name: entry.name, severity, notes };
+    })
+    .filter(Boolean) as WizardInjury[];
+};
 
-export default function WizardPage() {
-  const { toast } = useToast();
+export default async function WizardPage() {
+  const { supabase, user, profile } = await getSessionWithProfile();
+  if (!user || !profile) {
+    redirect("/login");
+  }
+
+  const { data: templatesData, error: templateError } = await supabase
+    .from("templates")
+    .select("id, name, disciplines, methodology, template_json");
+
+  if (templateError) {
+    // Consider redirecting to an error page or showing an error UI
+    throw new Error(`Failed to load templates: ${templateError.message}`);
+  }
+
+  const templateSummaries = (templatesData ?? []).map((template) =>
+    summarizeTemplate(template)
+  );
+
+  const injuries = parseInjuries(profile.injuries);
+  const preferences = isRecord(profile.preferences) ? profile.preferences : {};
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">Constraint wizard</h2>
-        <Chip variant="success">Beta</Chip>
-      </div>
-
-      <Card className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-slate-200">
-          <Sparkles size={18} className="text-brand-200" />
-          Guided generator balances injuries, equipment, and goals.
-        </div>
-
-        <div className="space-y-3">
-          <label
-            className="text-xs uppercase tracking-wide text-slate-400"
-            htmlFor="primary-goal"
-          >
-            Primary goal
-          </label>
-          <Input
-            id="primary-goal"
-            placeholder="e.g. Rebuild quad strength, low impact"
-          />
-        </div>
-
-        <div className="space-y-3">
-          <p className="text-xs uppercase tracking-wide text-slate-400">
-            Constraints
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {filters.map((filter) => (
-              <Chip key={filter.label}>{filter.label}</Chip>
-            ))}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="border border-dashed border-slate-700 text-xs"
-            >
-              Add
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <p className="text-xs uppercase tracking-wide text-slate-400">
-            Medical considerations
-          </p>
-          <div className="grid gap-2">
-            <div className="flex items-center gap-2 text-sm text-slate-200">
-              <Stethoscope size={18} className="text-amber-300" />
-              Post-ACL repair · avoid deep flexion past 90°
-            </div>
-            <div className="flex items-center gap-2 text-sm text-slate-200">
-              <HeartPulse size={18} className="text-emerald-300" />
-              Cardio capacity: Zone 2 focus this block
-            </div>
-          </div>
-        </div>
-
-        <Button
-          className="w-full"
-          onClick={() =>
-            toast({
-              title: "Program draft queued",
-              description:
-                "We will sync a tailored block. You can edit offline and push later."
-            })
-          }
-        >
-          Generate block
-        </Button>
-      </Card>
-
-      <Card className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={18} className="text-amber-300" />
-            <span className="text-sm font-semibold text-white">Risk guard</span>
-          </div>
-          <Chip variant="warning">Live</Chip>
-        </div>
-        <p className="text-sm text-slate-300">
-          We will avoid knee valgus triggers and flag moves that violate your
-          constraints before they enter the plan.
-        </p>
-        <div className="grid grid-cols-2 gap-2 text-xs text-slate-400">
-          <div className="rounded-xl bg-slate-900/70 p-3">
-            <p className="font-semibold text-white">Under review</p>
-            <p>Bulgarian split squats</p>
-          </div>
-          <div className="rounded-xl bg-slate-900/70 p-3">
-            <p className="font-semibold text-white">Suggested swap</p>
-            <p>Step-ups + sled drags</p>
-          </div>
-        </div>
-      </Card>
-    </div>
+    <WizardClient
+      userId={user.id}
+      initialInjuries={injuries}
+      initialPreferences={preferences}
+      templateSummaries={templateSummaries}
+      hasExistingProgram={!isProgramEmpty(profile.active_program_json)}
+    />
   );
 }

@@ -24,7 +24,115 @@ type GenericFunction = { Args: Record<string, unknown>; Returns: unknown };
 export type UserProfile = {
   user_id: string;
   active_program_json: Record<string, unknown> | null;
+  injuries: unknown[];
+  preferences: Record<string, unknown>;
 };
+
+type MuscleGroupRow = {
+  id: number;
+  name: string;
+  slug: string;
+  region: string;
+  parent_id: number | null;
+  created_at: string | null;
+};
+
+type MuscleGroupInsert = {
+  id?: number;
+  name: string;
+  slug: string;
+  region: string;
+  parent_id?: number | null;
+  created_at?: string | null;
+};
+
+type MuscleGroupUpdate = Partial<MuscleGroupInsert>;
+
+type ExerciseRow = {
+  id: number;
+  canonical_name: string;
+  aliases: string[] | null;
+  movement_pattern: string;
+  equipment: string[] | null;
+  is_bodyweight: boolean | null;
+  primary_muscle_group_id: number | null;
+  secondary_muscle_group_ids: number[] | null;
+  tags: string[] | null;
+  contraindications: unknown;
+  default_warmups: unknown;
+  default_warmdowns: unknown;
+  media: unknown;
+  created_at: string | null;
+};
+
+type ExerciseInsert = {
+  id?: number;
+  canonical_name: string;
+  aliases?: string[] | null;
+  movement_pattern: string;
+  equipment?: string[] | null;
+  is_bodyweight?: boolean | null;
+  primary_muscle_group_id?: number | null;
+  secondary_muscle_group_ids?: number[] | null;
+  tags?: string[] | null;
+  contraindications?: unknown;
+  default_warmups?: unknown;
+  default_warmdowns?: unknown;
+  media?: unknown;
+  created_at?: string | null;
+};
+
+type ExerciseUpdate = Partial<ExerciseInsert>;
+
+type TemplateRow = {
+  id: number;
+  name: string;
+  disciplines: string[];
+  methodology: string | null;
+  version: number;
+  template_json: unknown;
+  created_at: string | null;
+};
+
+type TemplateInsert = {
+  id?: number;
+  name: string;
+  disciplines?: string[];
+  methodology?: string | null;
+  version?: number;
+  template_json?: unknown;
+  created_at?: string | null;
+};
+
+type TemplateUpdate = Partial<TemplateInsert>;
+
+type TrainingSessionRow = {
+  id: number;
+  user_id: string | null;
+  session_date: string;
+  program_session_key: string;
+  status: string | null;
+  reschedule_flag: boolean | null;
+  inconsistency_score: number | null;
+  notes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type TrainingSessionInsert = {
+  id?: number;
+  user_id: string;
+  session_date: string;
+  program_session_key: string;
+  status?: string | null;
+  reschedule_flag?: boolean | null;
+  inconsistency_score?: number | null;
+  notes?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+type TrainingSessionUpdate = Partial<TrainingSessionInsert>;
 
 type Database = {
   public: {
@@ -33,11 +141,48 @@ type Database = {
         Row: UserProfile;
         Insert: {
           user_id: string;
+          display_name?: string | null;
+          units_pref?: string;
+          unit_conversion?: number;
+          bodyweight?: number;
+          sex?: string;
+          injuries?: unknown;
+          preferences?: Record<string, unknown>;
           active_program_json?: Record<string, unknown> | null;
+          active_program_version?: number;
+          offline_sync_cursor?: number;
+          created_at?: string;
+          updated_at?: string;
         };
         Update: {
           active_program_json?: Record<string, unknown> | null;
+          injuries?: unknown;
+          preferences?: Record<string, unknown>;
         };
+        Relationships: GenericRelationship[];
+      };
+      muscle_groups: {
+        Row: MuscleGroupRow;
+        Insert: MuscleGroupInsert;
+        Update: MuscleGroupUpdate;
+        Relationships: GenericRelationship[];
+      };
+      exercises: {
+        Row: ExerciseRow;
+        Insert: ExerciseInsert;
+        Update: ExerciseUpdate;
+        Relationships: GenericRelationship[];
+      };
+      templates: {
+        Row: TemplateRow;
+        Insert: TemplateInsert;
+        Update: TemplateUpdate;
+        Relationships: GenericRelationship[];
+      };
+      training_sessions: {
+        Row: TrainingSessionRow;
+        Insert: TrainingSessionInsert;
+        Update: TrainingSessionUpdate;
         Relationships: GenericRelationship[];
       };
     };
@@ -64,7 +209,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isUserProfilePayload = (
   value: unknown
-): value is { user_id: string; active_program_json?: unknown } => {
+): value is {
+  user_id: string;
+  active_program_json?: unknown;
+  injuries?: unknown;
+  preferences?: unknown;
+} => {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -139,16 +289,17 @@ export const ensureUserProfile = async (
     .from("users")
     .upsert({ user_id: user.id }, { onConflict: "user_id" });
   if (upsertResult.error) {
+    const err = upsertResult.error as { message?: string };
     throw new Error(
-      upsertResult.error instanceof Error
-        ? upsertResult.error.message
+      typeof err.message === "string"
+        ? err.message
         : "Failed to ensure user profile."
     );
   }
 
   const { data, error } = await userClient
     .from("users")
-    .select("user_id, active_program_json")
+    .select("user_id, active_program_json, injuries, preferences")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -164,11 +315,15 @@ export const ensureUserProfile = async (
   }
 
   const { user_id, active_program_json } = profileRow;
+  const injuries = Array.isArray(profileRow.injuries) ? profileRow.injuries : [];
+  const preferences = isRecord(profileRow.preferences) ? profileRow.preferences : {};
   const activeProgram = isRecord(active_program_json) ? active_program_json : null;
 
   return {
     user_id,
-    active_program_json: activeProgram
+    active_program_json: activeProgram,
+    injuries,
+    preferences
   };
 };
 

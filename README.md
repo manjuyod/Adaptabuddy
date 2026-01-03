@@ -11,12 +11,20 @@ Adaptive training companion scaffold built with Next.js 15 App Router, TypeScrip
 - Postgres library tables: `muscle_groups`, `exercises`, `templates`
 - Training data: `training_sessions`, `training_exercises`, `training_sets`
 - Sync: event-based `sync_events` for offline-first workflows
+- Wizard: constraint-aware program builder (injuries, fatigue, equipment, template mix, days/time) with deterministic preview/generate handlers
 
 ## App structure
 - `/login`: Supabase email/password + Google OAuth stub
 - `/train`, `/wizard`, `/kpi`, `/settings`, `/library/exercises`: mobile-first pages rendered via `app/(app)/` layout with bottom navigation
 - Middleware + auth callback for Supabase session cookies: `middleware.ts`, `app/auth/callback/route.ts`
 - PWA wiring: `app/manifest.ts`, `public/sw.js`, `app/providers.tsx`
+- Wizard UI: `app/(protected)/wizard/page.tsx` (server data) + `wizard-client.tsx` (multi-step client)
+
+### Exercise library (`/library/exercises`)
+- Server component loads `exercises` + `muscle_groups` from Supabase using authenticated select (RLS enforced).
+- Client UI supports: search by name/alias, filter by movement pattern, equipment, muscle group, and tags.
+- Tapping a card opens a details drawer showing canonical name, aliases, movement pattern, equipment, primary/secondary muscles, contraindications (body parts with replace/avoid thresholds), warmups/warmdowns, and media placeholders.
+- Read-only: no mutations are issued from this page.
 
 ## Database setup (Supabase)
 1) Create a Supabase project (free tier is fine for solo/small-group).
@@ -26,6 +34,14 @@ Adaptive training companion scaffold built with Next.js 15 App Router, TypeScrip
 ### Notes
 - `muscle_groups.name` is the stable upsert key. Seeds should derive/provide `slug` explicitly.
 - Templates are stored in `public.templates.template_json` and copied into `users.active_program_json` when selected (offline-first snapshot).
+
+## Program Builder Wizard (P05)
+- Endpoint contracts:
+  - Preview: `POST /api/wizard/preview` → `{seed, weeklySets, recoveryLoad, warnings, removedSlots}`
+  - Generate: `POST /api/wizard/generate` (requires `confirm_overwrite` when an active program exists) → persists `users.injuries`, `users.preferences` (fatigue/equipment/days), `users.active_program_json`, and upserts `training_sessions`.
+- Payload schema (zod-backed, see `lib/wizard/schemas.ts`):
+  - `user_id`, `injuries[{name,severity}]`, `fatigue_profile`, optional `equipment_profile`, `selected_programs[{template_id, weight_override?}]`, `days_per_week` (2–5), optional `max_session_minutes`, optional `preferred_days`, `confirm_overwrite`.
+- Determinism: preview/generate share `seed` derived from user + selected templates; snapshot stores `decisions_log` and schedule for reproducibility.
 
 ## Getting started
 ```bash
@@ -59,3 +75,4 @@ No load balancer is needed for solo or small-group usage.
 ## Changelog
 - Initial scaffold: Next.js + Tailwind app with Supabase SSR/browser clients, PWA manifest + service worker stub, design system components, and all required routes/pages.
 - Database seeding: muscle groups, exercises, and program templates (idempotent SQL patches).
+- Program Builder Wizard v2: multi-step UI, deterministic preview/generate API routes, zod schemas, and engine helpers with minimal Vitest coverage.
