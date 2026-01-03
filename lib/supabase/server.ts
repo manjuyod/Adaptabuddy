@@ -220,6 +220,8 @@ type TrainingSessionRow = {
   user_id: string | null;
   session_date: string;
   program_session_key: string;
+  plan_id: string | null;
+  week_key: string | null;
   status: string | null;
   reschedule_flag: boolean | null;
   inconsistency_score: number | null;
@@ -233,6 +235,8 @@ type TrainingSessionInsert = {
   user_id: string;
   session_date: string;
   program_session_key: string;
+  plan_id?: string | null;
+  week_key?: string | null;
   status?: string | null;
   reschedule_flag?: boolean | null;
   inconsistency_score?: number | null;

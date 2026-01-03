@@ -42,6 +42,41 @@ const dayIndexMap: Record<(typeof dayOptions)[number], number> = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
+const toIsoDate = (value: Date) => value.toISOString().slice(0, 10);
+
+const startOfWeekIso = (value: Date): string => {
+  const date = new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+  const weekday = date.getUTCDay();
+  const diff = (weekday + 6) % 7; // Monday start
+  date.setUTCDate(date.getUTCDate() - diff);
+  return toIsoDate(date);
+};
+
+const parseIsoDate = (value: string): Date | null => {
+  const parts = value.split("-").map((entry) => Number(entry));
+  if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) return null;
+  return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+};
+
+const deriveWeekKeyFromSchedule = (schedule: PlannedSession[]): string => {
+  if (schedule.length === 0) return startOfWeekIso(new Date());
+  const earliest = schedule.reduce((candidate, session) =>
+    session.date < candidate.date ? session : candidate
+  );
+  const parsed = parseIsoDate(earliest.date);
+  return parsed ? startOfWeekIso(parsed) : startOfWeekIso(new Date());
+};
+
+const generatePlanId = (seed: string): string => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return createHash("sha256")
+    .update(`${seed}-${Date.now()}`)
+    .digest("hex")
+    .slice(0, 32);
+};
+
 export const deriveSeed = (payload: WizardPayload, templateIds: number[]) =>
   createHash("sha256")
     .update(
@@ -189,6 +224,15 @@ const nextDateForDay = (dayName: (typeof dayOptions)[number]): string => {
   return scheduled.toISOString().slice(0, 10);
 };
 
+const dateForWeekKey = (weekKey: string, dayName: (typeof dayOptions)[number]): string => {
+  const base = parseIsoDate(weekKey);
+  if (!base) return nextDateForDay(dayName);
+  const offset = (dayIndexMap[dayName] - base.getUTCDay() + 7) % 7;
+  const target = new Date(base);
+  target.setUTCDate(base.getUTCDate() + offset);
+  return toIsoDate(target);
+};
+
 export const buildPreview = (
   payload: WizardPayload,
   templates: TemplateData[]
@@ -265,7 +309,8 @@ export const buildPreview = (
 export const buildSchedule = (
   payload: WizardPayload,
   templateSummaries: TemplateSummary[],
-  seed: string
+  seed: string,
+  options?: { planId?: string; weekKey?: string }
 ): PlannedSession[] => {
   const templatesById = new Map(templateSummaries.map((entry) => [entry.id, entry]));
   const selectedPrograms = payload.selected_programs.map((program) => ({
@@ -274,15 +319,21 @@ export const buildSchedule = (
   }));
 
   const trainingDays = pickTrainingDays(payload.preferred_days, payload.days_per_week);
+  const planId = options?.planId ?? generatePlanId(seed);
+  const planFragment = planId.slice(0, 8);
+  const weekKey = options?.weekKey;
 
   return trainingDays.map((day, index) => {
     const program = selectedPrograms[index % selectedPrograms.length];
     const summary = program.summary;
-    const sessionKey = `wiz_${summary?.id ?? "program"}_${index + 1}_${seed.slice(0, 6)}`;
+    const sessionKey = `wiz_${summary?.id ?? "program"}_${index + 1}_${seed.slice(0, 6)}_${planFragment}`;
+    const plannedDate = weekKey
+      ? dateForWeekKey(weekKey, day as (typeof dayOptions)[number])
+      : nextDateForDay(day as (typeof dayOptions)[number]);
 
     return {
-      date: nextDateForDay(day as (typeof dayOptions)[number]),
-      label: `${summary?.name ?? "Program"} — ${day}`,
+      date: plannedDate,
+      label: `${summary?.name ?? "Program"} - ${day}`,
       program_session_key: sessionKey,
       template_id: program.template_id,
       focus: summary?.focusHint ?? "Training session"
@@ -296,7 +347,9 @@ export const buildActiveProgramSnapshot = (
 ): { preview: PreviewResult; schedule: PlannedSession[]; snapshot: ActiveProgramSnapshot } => {
   const summaries = templates.map((template) => summarizeTemplate(template));
   const preview = buildPreview(payload, templates);
-  const schedule = buildSchedule(payload, summaries, preview.seed);
+  const planId = generatePlanId(preview.seed);
+  const schedule = buildSchedule(payload, summaries, preview.seed, { planId });
+  const weekKey = deriveWeekKeyFromSchedule(schedule);
   const decisions: string[] = [
     `Selected templates: ${summaries.map((summary) => summary.name).join(", ")}`,
     `Days per week: ${payload.days_per_week}`,
@@ -306,6 +359,10 @@ export const buildActiveProgramSnapshot = (
 
   const snapshot: ActiveProgramSnapshot = {
     seed: preview.seed,
+    seed_strategy: "static",
+    plan_id: planId,
+    week_key: weekKey,
+    restart_counter: 0,
     generated_at: new Date().toISOString(),
     fatigue_profile: payload.fatigue_profile,
     equipment_profile: payload.equipment_profile ?? [],

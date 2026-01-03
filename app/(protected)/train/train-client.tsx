@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast-provider";
 import { clearEventsThrough, appendEvent, loadEvents, persistActiveProgram, persistSession, readCachedSession } from "@/lib/train/offline";
-import type { SyncEvent, SyncEventType, TrainingSession, TrainingSet } from "@/lib/train/types";
+import type { RescheduleResponse, SyncEvent, SyncEventType, TrainingSession, TrainingSet } from "@/lib/train/types";
 import { ensureInjuryIds, createInjuryId } from "@/lib/wizard/injuries";
 import type { WizardInjury } from "@/lib/wizard/types";
 import {
@@ -23,6 +23,8 @@ import {
   Loader2,
   Plus,
   RefreshCw,
+  RotateCcw,
+  Shuffle,
   Trash2,
   WifiOff
 } from "lucide-react";
@@ -102,6 +104,9 @@ export default function TrainClient({
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [cursor, setCursor] = useState(offlineCursor);
+  const [program, setProgram] = useState<Record<string, unknown> | null>(activeProgram);
+  const [reshuffleSeed, setReshuffleSeed] = useState(false);
+  const [isRescheduling, setIsRescheduling] = useState<null | "auto" | "soft" | "hard">(null);
 
   const persistSnapshot = useCallback(
     async (nextSession: TrainingSession | null = session) => {
@@ -202,13 +207,62 @@ export default function TrainClient({
     [flushQueue]
   );
 
+  const runReschedule = useCallback(
+    async (mode: "auto" | "soft" | "hard") => {
+      setIsRescheduling(mode);
+      try {
+        const response = await fetch("/api/reschedule/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode,
+            reshuffle: mode !== "auto" ? reshuffleSeed : undefined
+          })
+        });
+
+        const payload = (await response.json()) as RescheduleResponse & { error?: string };
+        if (!response.ok) {
+          throw new Error(payload.error ?? "Reschedule failed");
+        }
+
+        if (payload.active_program) {
+          setProgram(payload.active_program as Record<string, unknown>);
+        }
+        if ("upcoming_session" in payload) {
+          setSession(payload.upcoming_session ?? null);
+        }
+        setLastSyncAt(Date.now());
+
+        const title =
+          mode === "auto"
+            ? "Auto-reschedule complete"
+            : mode === "soft"
+              ? "Soft restart applied"
+              : "Hard restart applied";
+        const summary = `Missed ${payload.missed ?? 0}, rescheduled ${payload.rescheduled ?? 0}, created ${payload.created ?? 0}`;
+        const restartNote =
+          payload.restart_required && payload.restart_reason
+            ? ` (${payload.restart_reason})`
+            : "";
+        toast({
+          title,
+          description: `${summary}${restartNote}`
+        });
+      } catch (error) {
+        toast({
+          title: "Reschedule failed",
+          description: error instanceof Error ? error.message : "Unable to reschedule."
+        });
+      } finally {
+        setIsRescheduling(null);
+      }
+    },
+    [reshuffleSeed, toast]
+  );
+
   useEffect(() => {
     let cancelled = false;
     const bootstrap = async () => {
-      if (activeProgram) {
-        await persistActiveProgram(activeProgram);
-      }
-
       const cached = await readCachedSession();
       if (!cancelled && cached) {
         if (!sessionRef.current) {
@@ -249,7 +303,12 @@ export default function TrainClient({
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, [activeProgram, flushQueue]);
+  }, [flushQueue]);
+
+  useEffect(() => {
+    if (!program) return;
+    void persistActiveProgram(program);
+  }, [program]);
 
   useEffect(() => {
     sessionRef.current = session;
@@ -466,6 +525,22 @@ export default function TrainClient({
 
   const pendingCount = pendingEvents.length;
 
+  const planMeta = useMemo(() => {
+    const seed =
+      program && typeof (program as { seed?: unknown }).seed === "string"
+        ? (program as { seed: string }).seed
+        : null;
+    const planId =
+      program && typeof (program as { plan_id?: unknown }).plan_id === "string"
+        ? (program as { plan_id: string }).plan_id
+        : null;
+    const restartCounter =
+      program && typeof (program as { restart_counter?: unknown }).restart_counter === "number"
+        ? (program as { restart_counter: number }).restart_counter
+        : 0;
+    return { seed, planId, restartCounter };
+  }, [program]);
+
   const offlineBanner = (
     <Card className="flex flex-col gap-3 bg-slate-900/70 p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">
@@ -504,6 +579,83 @@ export default function TrainClient({
   return (
     <div className="space-y-5">
       {offlineBanner}
+
+      <Card className="space-y-3 border border-slate-800 bg-slate-950/80 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-white">Schedule controls</p>
+            <p className="text-xs text-slate-400">
+              Auto-reschedule missed sessions or restart this week.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-300">
+            <Toggle
+              checked={reshuffleSeed}
+              onCheckedChange={(checked) => setReshuffleSeed(checked)}
+              aria-label="Toggle seed reshuffle"
+            >
+              <Shuffle size={14} />
+            </Toggle>
+            <span>Reshuffle seed</span>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void runReschedule("auto")}
+            disabled={isRescheduling !== null}
+          >
+            {isRescheduling === "auto" ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
+            Auto-reschedule
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => void runReschedule("soft")}
+            disabled={isRescheduling !== null}
+          >
+            {isRescheduling === "soft" ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RotateCcw className="mr-2 h-4 w-4" />
+            )}
+            Soft restart
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-amber-200"
+            onClick={() => void runReschedule("hard")}
+            disabled={isRescheduling !== null}
+          >
+            {isRescheduling === "hard" ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <AlertTriangle className="mr-2 h-4 w-4" />
+            )}
+            Hard restart
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs text-slate-400">
+          {planMeta.seed && (
+            <span className="rounded-full bg-slate-900 px-2 py-1 text-slate-200">
+              Seed {planMeta.seed}
+            </span>
+          )}
+          {planMeta.planId && (
+            <span className="rounded-full bg-slate-900 px-2 py-1 text-slate-200">
+              Plan {planMeta.planId.slice(0, 8)}
+            </span>
+          )}
+          <span className="rounded-full bg-slate-900 px-2 py-1 text-slate-200">
+            Restarts {planMeta.restartCounter}
+          </span>
+        </div>
+      </Card>
 
       <Card className="space-y-4">
         <div className="flex items-center justify-between gap-3">

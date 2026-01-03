@@ -1,4 +1,4 @@
-import type { WizardInjury } from "@/lib/wizard/types";
+import type { ActiveProgramSnapshot, WizardInjury } from "@/lib/wizard/types";
 
 export type TrainingSet = {
   id: number | null;
@@ -137,4 +137,14 @@ export type SyncResponseBody = {
   offline_sync_cursor: number;
   bodyweight: number | null;
   injuries: WizardInjury[];
+};
+
+export type RescheduleResponse = {
+  missed: number;
+  rescheduled: number;
+  created: number;
+  restart_required: boolean;
+  restart_reason?: string;
+  active_program?: ActiveProgramSnapshot | null;
+  upcoming_session?: TrainingSession | null;
 };

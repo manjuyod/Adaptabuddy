@@ -13,6 +13,12 @@
 ## Library
 - Exercises page: `app/(protected)/library/exercises` server + `exercise-client.tsx` client search/filters. Uses Supabase RLS reads for `exercises` + `muscle_groups`.
 
+## Training / Sync (P06)
+- UI: `app/(protected)/train/page.tsx` (server load) + `train-client.tsx` (client). Shows today/next session with completion toggle, per-set CRUD (reps/weight/RPE/RIR/tempo/rest_seconds/AMRAP/Joker), per-exercise pain score, session/exercise tonnage and e1RM estimates. Offline banner + toasts.
+- Offline: `lib/train/offline.ts` IndexedDB cache for session/active_program + append-only event queue. Events: `UPSERT_SET`, `DELETE_SET`, `TOGGLE_EXERCISE`, `UPDATE_PAIN`, `UPDATE_BODYWEIGHT`, `UPDATE_INJURIES` with `local_seq`.
+- Sync endpoint: `POST /api/sync` (auth). Writes to `sync_events` idempotently, applies mutations to `training_sets`/`training_exercises`/`users`, advances `users.offline_sync_cursor`, returns authoritative session + bodyweight + injuries.
+- Loader/helpers: `lib/train/session-loader.ts` for upcoming session; types in `lib/train/types.ts`. Keep non-ASCII out; preserve deterministic seeds/decisions in wizard flow.
+
 ## Supabase types/helpers
 - Lightweight manual types live in `lib/supabase/server.ts`; includes users (injuries/preferences/active_program_json), templates, training_sessions. Prefer extending here when tables change.
 - Admin client lives in `lib/supabase/admin.ts`; browser client in `lib/supabase/browser.ts`.

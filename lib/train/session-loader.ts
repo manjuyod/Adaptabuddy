@@ -1,4 +1,10 @@
-import "server-only";
+try {
+  // Optional in tests; available in Next runtime
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+  require("server-only");
+} catch {
+  // no-op
+}
 
 import type { Database, SupabaseClientType } from "@/lib/supabase/server";
 import type { TrainingExercise, TrainingSession, TrainingSet } from "@/lib/train/types";

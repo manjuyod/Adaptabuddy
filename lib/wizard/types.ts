@@ -59,6 +59,10 @@ export type PlannedSession = {
 
 export type ActiveProgramSnapshot = {
   seed: string;
+  seed_strategy: "static" | "reshuffle";
+  plan_id: string;
+  week_key: string;
+  restart_counter: number;
   generated_at: string;
   fatigue_profile: FatigueProfile;
   equipment_profile?: EquipmentOption[];

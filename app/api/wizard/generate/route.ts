@@ -102,6 +102,8 @@ export async function POST(request: NextRequest) {
       user_id: authData.user.id,
       session_date: session.date,
       program_session_key: session.program_session_key,
+      plan_id: snapshot.plan_id,
+      week_key: snapshot.week_key,
       status: "planned",
       notes: session.focus
     }));

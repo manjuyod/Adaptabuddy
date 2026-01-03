@@ -88,6 +88,8 @@ create table if not exists public.training_sessions (
   user_id uuid references users(user_id) on delete cascade,
   session_date date not null,
   program_session_key text not null,
+  plan_id uuid,
+  week_key date,
   status text check (status in ('planned','completed','missed','skipped')) default 'planned',
   reschedule_flag boolean default false,
   inconsistency_score int default 0,

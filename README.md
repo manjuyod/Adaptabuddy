@@ -12,6 +12,7 @@ Adaptive training companion scaffold built with Next.js 15 App Router, TypeScrip
 - Training data: `training_sessions`, `training_exercises`, `training_sets`
 - Sync: event-based `sync_events` for offline-first workflows
 - Wizard: constraint-aware program builder (injuries, fatigue, equipment, template mix, days/time) with deterministic preview/generate handlers
+- Training: offline-first `/train` page with per-set logging, pain/bodyweight capture, and batched sync
 
 ## App structure
 - `/login`: Supabase email/password + Google OAuth stub
@@ -26,6 +27,12 @@ Adaptive training companion scaffold built with Next.js 15 App Router, TypeScrip
 - Tapping a card opens a details drawer showing canonical name, aliases, movement pattern, equipment, primary/secondary muscles, contraindications (body parts with replace/avoid thresholds), warmups/warmdowns, and media placeholders.
 - Read-only: no mutations are issued from this page.
 
+### Training (`/train`)
+- Server loads today/next planned session (`training_sessions` + nested exercises/sets) and passes to client.
+- Client UI supports toggling exercise completion, per-set add/edit/delete (reps/weight/RPE/RIR/tempo/rest_seconds/AMRAP/Joker), per-exercise pain score, and derived tonnage/e1RM display.
+- Offline-first: IndexedDB caches session + active program and appends events (`UPSERT_SET`, `DELETE_SET`, `TOGGLE_EXERCISE`, `UPDATE_PAIN`, `UPDATE_BODYWEIGHT`, `UPDATE_INJURIES`) with local sequence numbers.
+- Sync: `/api/sync` batches queued events, writes to `sync_events` idempotently, applies mutations inside RLS, advances `users.offline_sync_cursor`, and returns the authoritative session/bodyweight/injuries; UI surfaces offline indicator and sync toasts.
+
 ## Database setup (Supabase)
 1) Create a Supabase project (free tier is fine for solo/small-group).
 2) Run schema migration SQL (tables + RLS).
@@ -37,8 +44,8 @@ Adaptive training companion scaffold built with Next.js 15 App Router, TypeScrip
 
 ## Program Builder Wizard (P05)
 - Endpoint contracts:
-  - Preview: `POST /api/wizard/preview` → `{seed, weeklySets, recoveryLoad, warnings, removedSlots}`
-  - Generate: `POST /api/wizard/generate` (requires `confirm_overwrite` when an active program exists) → persists `users.injuries`, `users.preferences` (fatigue/equipment/days), `users.active_program_json`, and upserts `training_sessions`.
+  - Preview: `POST /api/wizard/preview` -> `{seed, weeklySets, recoveryLoad, warnings, removedSlots}`
+  - Generate: `POST /api/wizard/generate` (requires `confirm_overwrite` when an active program exists) -> persists `users.injuries`, `users.preferences` (fatigue/equipment/days), `users.active_program_json`, and upserts `training_sessions`.
 - Payload schema (zod-backed, see `lib/wizard/schemas.ts`):
   - `user_id`, `injuries[{name,severity}]`, `fatigue_profile`, optional `equipment_profile`, `selected_programs[{template_id, weight_override?}]`, `days_per_week` (2–5), optional `max_session_minutes`, optional `preferred_days`, `confirm_overwrite`.
 - Determinism: preview/generate share `seed` derived from user + selected templates; snapshot stores `decisions_log` and schedule for reproducibility.

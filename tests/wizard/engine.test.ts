@@ -54,5 +54,10 @@ describe("wizard engine", () => {
     expect(schedule).toHaveLength(payload.days_per_week);
     expect(snapshot.selected_programs[0].template_id).toBe(baseTemplate.id);
     expect(schedule[0].label).toContain("Tue");
+    expect(snapshot.plan_id).toBeTruthy();
+    expect(snapshot.week_key).toMatch(/\d{4}-\d{2}-\d{2}/);
+    expect(snapshot.seed_strategy).toBe("static");
+    expect(snapshot.restart_counter).toBe(0);
+    expect(schedule[0].program_session_key).toContain(snapshot.plan_id.slice(0, 8));
   });
 });
