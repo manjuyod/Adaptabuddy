@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import { dayOptions } from "./schemas";
+import { parseIsoDate } from "./engine";
 import {
   normalizeTemplateJson,
   programTemplateSchema,
@@ -98,8 +99,8 @@ const deriveWeekKeyFromSchedule = (schedule: PlannedSession[]): string => {
   const earliest = schedule.reduce((candidate, session) =>
     session.date < candidate.date ? session : candidate
   );
-  const parsed = new Date(earliest.date);
-  return startOfWeekIso(parsed);
+  const parsed = parseIsoDate(earliest.date);
+  return startOfWeekIso(parsed ?? new Date());
 };
 
 const pickTrainingDays = (
@@ -617,8 +618,10 @@ const selectExerciseForSlot = (params: {
       demandMovement?.priority ?? 1
     );
 
-    const noveltyPenalty =
-      (params.usage.get(exercise.id ?? -1) ?? 0) * (params.selectionPolicy.novelty_decay ?? 0.35);
+    const hasValidId = typeof exercise.id === "number";
+    const noveltyPenalty = hasValidId
+      ? (params.usage.get(exercise.id) ?? 0) * (params.selectionPolicy.novelty_decay ?? 0.35)
+      : 0;
 
     const baseScore =
       (slot.slot.priority ?? 1) * (1 + coverageScore + average(muscleScores)) -
@@ -645,7 +648,9 @@ const selectExerciseForSlot = (params: {
   const repsMid = Math.round(average(slot.slot.reps_hint ?? [6, 10]));
   const rpeMid = Math.round(average(slot.slot.rpe_hint ?? [6, 9]) * 10) / 10;
 
-  params.usage.set(chosen.id ?? -1, (params.usage.get(chosen.id ?? -1) ?? 0) + 1);
+  if (typeof chosen.id === "number") {
+    params.usage.set(chosen.id, (params.usage.get(chosen.id) ?? 0) + 1);
+  }
 
   return {
     slot: {

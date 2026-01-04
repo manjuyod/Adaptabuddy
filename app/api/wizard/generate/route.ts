@@ -204,21 +204,24 @@ export async function POST(request: NextRequest) {
     weak_point_selection: payload.weak_point_selection ?? existingPreferences.weak_point_selection
   };
 
-  const saveMetaFromProfile = isRecord(profile.save_meta_json) ? profile.save_meta_json : {};
-  const nowIso = new Date().toISOString();
-  const nextSaveMeta = {
-    ...saveMetaFromProfile,
-    plan_started_at:
-      typeof saveMetaFromProfile.plan_started_at === "string"
-        ? saveMetaFromProfile.plan_started_at
-        : nowIso,
-    last_activity_at: nowIso
-  };
-
   const previousPlanId =
     isRecord(profile.active_program_json) && typeof (profile.active_program_json as { plan_id?: unknown }).plan_id === "string"
       ? ((profile.active_program_json as { plan_id: string }).plan_id)
       : null;
+  const saveMetaFromProfile = isRecord(profile.save_meta_json) ? profile.save_meta_json : {};
+  const nowIso = new Date().toISOString();
+  const shouldResetPlanStart = payload.confirm_overwrite || !previousPlanId;
+  const nextSaveMeta = {
+    ...saveMetaFromProfile,
+    plan_started_at:
+      shouldResetPlanStart
+        ? nowIso
+        : typeof saveMetaFromProfile.plan_started_at === "string"
+          ? saveMetaFromProfile.plan_started_at
+          : nowIso,
+    last_activity_at: nowIso
+  };
+
   if (payload.confirm_overwrite && previousPlanId) {
     await supabase
       .from("training_sessions")

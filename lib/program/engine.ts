@@ -317,9 +317,22 @@ export const resolveSlots = (params: ResolveParams): {
   }
 
   // Fallback: treat template.sessions as already resolved slots
-  const sessions = Array.isArray((params.template as { sessions?: unknown }).sessions)
+  let sessions: SessionPlan[] = Array.isArray((params.template as { sessions?: unknown }).sessions)
     ? ((params.template as { sessions: SessionPlan[] }).sessions ?? [])
     : [];
+
+  if (sessions.length === 0) {
+    sessions = [
+      {
+        template_id: params.templateId,
+        program_session_key: `plan_${params.templateId}_default`,
+        focus: "Training",
+        label: "Session",
+        week_offset: 0,
+        slots: [] as ResolvedSlot[]
+      }
+    ];
+  }
 
   const weeks = Math.max(1, params.template.weeks ?? 4);
   const trainingDays = pickTrainingDays(params.payload.preferred_days, params.payload.days_per_week);
@@ -618,7 +631,10 @@ export const adaptNextWeek = (params: {
 
   params.performance.forEach((sample) => {
     if (typeof sample.pain === "number" && sample.pain >= 7) {
-      const [programSessionKey, slotKey] = sample.exercise_key.split("_", 2);
+      const separatorIndex = sample.exercise_key.lastIndexOf("_");
+      if (separatorIndex === -1) return;
+      const programSessionKey = sample.exercise_key.slice(0, separatorIndex);
+      const slotKey = sample.exercise_key.slice(separatorIndex + 1);
       if (!programSessionKey || !slotKey) return;
       if (!painBans.has(slotKey)) painBans.set(slotKey, new Set());
       painBans.get(slotKey)?.add(programSessionKey);

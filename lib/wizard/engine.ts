@@ -141,7 +141,7 @@ const startOfWeekIso = (value: Date): string => {
   return toIsoDate(date);
 };
 
-const parseIsoDate = (value: string): Date | null => {
+export const parseIsoDate = (value: string): Date | null => {
   const parts = value.split("-").map((entry) => Number(entry));
   if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) return null;
   return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));

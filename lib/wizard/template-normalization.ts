@@ -110,13 +110,95 @@ export type TemplateNormalizationResult =
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
+const isStringArray = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((entry) => typeof entry === "string");
+
+const isSelectionQuery = (
+  value: unknown
+): value is HypertrophyTemplate["pools"][number]["selection_query"] => {
+  if (!isRecord(value)) return false;
+  const movementPattern = (value as { movement_pattern?: unknown }).movement_pattern;
+  if (typeof movementPattern !== "string") return false;
+  const equipment = (value as { equipment?: unknown }).equipment;
+  if (equipment !== undefined && !isStringArray(equipment)) return false;
+  const tags = (value as { tags?: unknown }).tags;
+  if (tags !== undefined && !isStringArray(tags)) return false;
+  return true;
+};
+
+const isExercisePool = (value: unknown): value is HypertrophyTemplate["pools"][number] => {
+  if (!isRecord(value)) return false;
+  if (typeof (value as { pool_key?: unknown }).pool_key !== "string") return false;
+  if (!isSelectionQuery((value as { selection_query?: unknown }).selection_query)) return false;
+  if (!isStringArray((value as { fallback_pool_keys?: unknown }).fallback_pool_keys)) return false;
+  if (!isStringArray((value as { default_exercise_names?: unknown }).default_exercise_names)) return false;
+  return true;
+};
+
+const isSlotDescriptor = (
+  value: unknown
+): value is HypertrophyTemplate["sessions"][number]["slots"][number] => {
+  if (!isRecord(value)) return false;
+  if (typeof (value as { slot_key?: unknown }).slot_key !== "string") return false;
+  if (typeof (value as { pool_key?: unknown }).pool_key !== "string") return false;
+  if (typeof (value as { movement_pattern?: unknown }).movement_pattern !== "string") return false;
+  const targetMuscles = (value as { target_muscles?: unknown }).target_muscles;
+  if (targetMuscles !== undefined && !isStringArray(targetMuscles)) return false;
+  const equipment = (value as { equipment?: unknown }).equipment;
+  if (equipment !== undefined && !isStringArray(equipment)) return false;
+  const tags = (value as { tags?: unknown }).tags;
+  if (tags !== undefined && !isStringArray(tags)) return false;
+  const sets = (value as { sets?: unknown }).sets;
+  if (sets !== undefined && typeof sets !== "number") return false;
+  const reps = (value as { reps?: unknown }).reps;
+  if (reps !== undefined && typeof reps !== "number" && typeof reps !== "string") return false;
+  const rir = (value as { rir?: unknown }).rir;
+  if (rir !== undefined && typeof rir !== "number") return false;
+  const rpe = (value as { rpe?: unknown }).rpe;
+  if (rpe !== undefined && typeof rpe !== "number") return false;
+  const optional = (value as { optional?: unknown }).optional;
+  if (optional !== undefined && typeof optional !== "boolean") return false;
+  return true;
+};
+
+const isHypertrophySession = (
+  value: unknown
+): value is HypertrophyTemplate["sessions"][number] => {
+  if (!isRecord(value)) return false;
+  if (typeof (value as { session_key?: unknown }).session_key !== "string") return false;
+  if (typeof (value as { focus?: unknown }).focus !== "string") return false;
+  const label = (value as { label?: unknown }).label;
+  if (label !== undefined && typeof label !== "string") return false;
+  const archetype = (value as { archetype?: unknown }).archetype;
+  if (archetype !== undefined && typeof archetype !== "string") return false;
+  const slots = (value as { slots?: unknown }).slots;
+  if (!Array.isArray(slots) || !slots.every(isSlotDescriptor)) return false;
+  return true;
+};
+
+const isHypertrophyTemplateLike = (value: unknown): value is HypertrophyTemplate => {
+  if (!isRecord(value)) return false;
+  const pools = (value as { pools?: unknown }).pools;
+  const sessions = (value as { sessions?: unknown }).sessions;
+  if (!Array.isArray(pools) || !pools.every(isExercisePool)) return false;
+  if (!Array.isArray(sessions) || !sessions.every(isHypertrophySession)) return false;
+  const weeks = (value as { weeks?: unknown }).weeks;
+  if (weeks !== undefined && typeof weeks !== "number") return false;
+  const weakPoints = (value as { weak_points?: unknown }).weak_points;
+  if (weakPoints !== undefined) {
+    if (!isRecord(weakPoints)) return false;
+    if (!Object.values(weakPoints).every(isStringArray)) return false;
+  }
+  return true;
+};
+
 export const normalizeTemplateJson = (
   value: unknown,
   options?: { fallbackName?: string; defaultType?: "program" | "workout" | "block" }
 ): TemplateNormalizationResult | null => {
   if (!isRecord(value)) return null;
-  if (Array.isArray((value as { pools?: unknown }).pools) && Array.isArray((value as { sessions?: unknown }).sessions)) {
-    return { type: "hypertrophy", template: value as HypertrophyTemplate };
+  if (isHypertrophyTemplateLike(value)) {
+    return { type: "hypertrophy", template: value };
   }
 
   const materialized = {

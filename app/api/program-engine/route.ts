@@ -303,7 +303,7 @@ const loadPerformanceSamples = async (
 };
 
 export async function POST(request: NextRequest) {
-  const response = NextResponse.next();
+  const response = new NextResponse();
   const supabase: SupabaseClientType = createSupabaseRouteClient(request, response);
 
   const { data: authData, error: authError } = await supabase.auth.getUser();
