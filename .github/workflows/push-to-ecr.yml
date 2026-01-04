@@ -1,0 +1,41 @@
+name: Build and push image to ECR
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-west-2
+      ECR_REPO: adaptabuddy-web # <-- must match your ECR repo name exactly
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::130647806533:role/adaptabuddy-github-oidc-ecr
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Discover registry like: 123456789012.dkr.ecr.us-west-2.amazonaws.com
+          ECR_REGISTRY="$(aws sts get-caller-identity --query Account --output text).dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+          docker build -t "$ECR_REGISTRY/${ECR_REPO}:${IMAGE_TAG}" .
+          docker push "$ECR_REGISTRY/${ECR_REPO}:${IMAGE_TAG}"
+
+          docker tag "$ECR_REGISTRY/${ECR_REPO}:${IMAGE_TAG}" "$ECR_REGISTRY/${ECR_REPO}:latest"
+          docker push "$ECR_REGISTRY/${ECR_REPO}:latest"
