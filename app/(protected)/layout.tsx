@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { NotificationCenter } from "@/components/layout/notification-center";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -21,8 +22,11 @@ export default function AppLayout({
           </p>
           <h1 className="text-2xl font-semibold text-white">Your workout hub</h1>
         </div>
-        <div className="rounded-full bg-slate-900 px-3 py-1 text-xs text-slate-400">
-          Offline ready
+        <div className="flex items-center gap-3">
+          <NotificationCenter />
+          <div className="rounded-full bg-slate-900 px-3 py-1 text-xs text-slate-400">
+            Offline ready
+          </div>
         </div>
       </header>
 

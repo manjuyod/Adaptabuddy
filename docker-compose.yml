@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  web:
+    image: adaptabuddy:local
+    build:
+      context: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      PORT: 3000
+    restart: unless-stopped

@@ -86,7 +86,9 @@ export const deriveSeed = (payload: WizardPayload, templateIds: number[]) =>
         days: payload.days_per_week,
         fatigue: payload.fatigue_profile,
         preferred_days: payload.preferred_days ?? [],
-        equipment: payload.equipment_profile ?? []
+        equipment: payload.equipment_profile ?? [],
+        pool_preferences: payload.pool_preferences ?? [],
+        weak_point_selection: payload.weak_point_selection ?? null
       })
     )
     .digest("hex")
@@ -356,6 +358,9 @@ export const buildActiveProgramSnapshot = (
     `Preferred days: ${(payload.preferred_days ?? []).join(", ") || "auto-assigned"}`,
     `Fatigue profile: ${payload.fatigue_profile}`
   ];
+  if (payload.weak_point_selection?.focus) {
+    decisions.push(`Weak point focus: ${payload.weak_point_selection.focus}`);
+  }
 
   const snapshot: ActiveProgramSnapshot = {
     seed: preview.seed,
@@ -373,7 +378,9 @@ export const buildActiveProgramSnapshot = (
     selected_programs: payload.selected_programs,
     schedule,
     decisions_log: decisions,
-    preview
+    preview,
+    pool_preferences: payload.pool_preferences ?? [],
+    weak_point_selection: payload.weak_point_selection ?? null
   };
 
   return { preview, schedule, snapshot };

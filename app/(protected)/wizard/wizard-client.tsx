@@ -18,7 +18,9 @@ import type {
   PreviewResult,
   TemplateSummary,
   FatigueProfile,
-  WizardInjury
+  WizardInjury,
+  PoolPreference,
+  WeakPointSelection
 } from "@/lib/wizard/types";
 import { createInjuryId, ensureInjuryIds } from "@/lib/wizard/injuries";
 import {
@@ -42,6 +44,34 @@ type ProgramSelection = {
   weight_override?: number;
 };
 
+const poolKeys = [
+  "squat_quad",
+  "hinge_hamstring",
+  "hpress_chest",
+  "vpress_delts",
+  "vpull_lats",
+  "hpull_back",
+  "biceps",
+  "triceps",
+  "delts_iso",
+  "abs",
+  "calves"
+] as const;
+
+const weakPointDefaults: Record<string, { option1: string; option2: string }> = {
+  lats: { option1: "Neutral-Grip Pullup", option2: "Half-Kneeling 1-Arm Lat Pulldown" },
+  delts: { option1: "DB Lateral Raise", option2: "Arnold Press" },
+  chest: { option1: "Incline DB Press", option2: "Flat DB Press" },
+  glutes: { option1: "Hip Thrust", option2: "DB Bulgarian Split Squat" },
+  triceps: { option1: "Triceps Pushdown", option2: "DB Triceps Extension" }
+};
+
+type PoolOverrideState = {
+  pinned: string;
+  banned: string[];
+  banInput: string;
+};
+
 const isEquipmentOption = (value: unknown): value is EquipmentOption =>
   typeof value === "string" &&
   (equipmentOptions as readonly string[]).includes(value);
@@ -52,6 +82,41 @@ const pullNumber = (value: unknown, fallback: number) =>
 const pullArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 const isPreferredDay = (value: unknown): value is (typeof dayOptions)[number] =>
   typeof value === "string" && dayOptions.includes(value as (typeof dayOptions)[number]);
+
+const parsePoolPreferences = (value: unknown): PoolPreference[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (typeof entry !== "object" || entry === null) return null;
+      const pool_key = (entry as { pool_key?: unknown }).pool_key;
+      if (typeof pool_key !== "string") return null;
+      const pinned = (entry as { pinned?: unknown }).pinned;
+      const banned = (entry as { banned?: unknown }).banned;
+      return {
+        pool_key,
+        pinned: typeof pinned === "string" ? pinned : undefined,
+        banned: Array.isArray(banned)
+          ? banned.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+          : undefined
+      } satisfies PoolPreference;
+    })
+    .filter(Boolean) as PoolPreference[];
+};
+
+const parseWeakPointSelection = (value: unknown): WeakPointSelection | null => {
+  if (typeof value !== "object" || value === null) return null;
+  const focus = (value as { focus?: unknown }).focus;
+  const option1 = (value as { option1?: unknown }).option1;
+  const option2 = (value as { option2?: unknown }).option2;
+  if (typeof focus === "string" && typeof option1 === "string") {
+    return {
+      focus,
+      option1,
+      option2: typeof option2 === "string" ? option2 : undefined
+    };
+  }
+  return null;
+};
 
 export function WizardClient({
   userId,
@@ -80,6 +145,34 @@ export function WizardClient({
   );
   const [equipment, setEquipment] = useState<EquipmentOption[]>(initialEquipment);
 
+  const initialPoolPrefs = parsePoolPreferences(
+    (initialPreferences as { pool_preferences?: unknown }).pool_preferences
+  );
+  const buildPoolState = (): Record<string, PoolOverrideState> => {
+    const base: Record<string, PoolOverrideState> = {};
+    poolKeys.forEach((poolKey) => {
+      const pref = initialPoolPrefs.find((entry) => entry.pool_key === poolKey);
+      base[poolKey] = {
+        pinned: pref?.pinned ?? "",
+        banned: pref?.banned ?? [],
+        banInput: ""
+      };
+    });
+    return base;
+  };
+  const [poolOverrides, setPoolOverrides] = useState<Record<string, PoolOverrideState>>(
+    buildPoolState
+  );
+
+  const initialWeakPointSelection =
+    parseWeakPointSelection((initialPreferences as { weak_point_selection?: unknown }).weak_point_selection) ??
+    (() => {
+      const defaultFocus = "lats";
+      const defaults = weakPointDefaults[defaultFocus];
+      return { focus: defaultFocus, option1: defaults.option1, option2: defaults.option2 };
+    })();
+  const [weakPoint, setWeakPoint] = useState<WeakPointSelection>(initialWeakPointSelection);
+
   const [selectedPrograms, setSelectedPrograms] = useState<ProgramSelection[]>(
     templateSummaries.length
       ? [{ template_id: templateSummaries[0].id, weight_override: 1 }]
@@ -104,6 +197,32 @@ export function WizardClient({
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const poolPreferencesPayload = useMemo(() => {
+    return Object.entries(poolOverrides)
+      .map(([pool_key, value]) => {
+        const banned = value.banned.filter((entry) => entry.trim().length > 0);
+        const pinned = value.pinned.trim();
+        if (!pinned && banned.length === 0) return null;
+        return {
+          pool_key,
+          pinned: pinned || undefined,
+          banned: banned.length ? banned : undefined
+        } satisfies PoolPreference;
+      })
+      .filter(Boolean) as PoolPreference[];
+  }, [poolOverrides]);
+
+  const weakPointSelectionPayload = useMemo(() => {
+    const option1 = weakPoint.option1.trim();
+    const option2 = weakPoint.option2?.trim();
+    if (!option1) return null;
+    return {
+      focus: weakPoint.focus,
+      option1,
+      option2: option2 && option2.length > 0 ? option2 : undefined
+    } satisfies WeakPointSelection;
+  }, [weakPoint]);
+
   const steps = [
     "Constraints",
     "Program mix",
@@ -123,6 +242,69 @@ export function WizardClient({
     setPreferredDays((prev) =>
       prev.includes(day) ? prev.filter((value) => value !== day) : [...prev, day]
     );
+  };
+
+  const updatePoolPinned = (poolKey: string, value: string) => {
+    setPoolOverrides((prev) => ({
+      ...prev,
+      [poolKey]: {
+        ...(prev[poolKey] ?? { banned: [], banInput: "", pinned: "" }),
+        pinned: value
+      }
+    }));
+  };
+
+  const updateBanInput = (poolKey: string, value: string) => {
+    setPoolOverrides((prev) => ({
+      ...prev,
+      [poolKey]: {
+        ...(prev[poolKey] ?? { banned: [], banInput: "", pinned: "" }),
+        banInput: value
+      }
+    }));
+  };
+
+  const addPoolBan = (poolKey: string) => {
+    setPoolOverrides((prev) => {
+      const current = prev[poolKey] ?? { banned: [], banInput: "", pinned: "" };
+      const nextBan = current.banInput.trim();
+      if (!nextBan) return prev;
+      if (current.banned.some((item) => item.toLowerCase() === nextBan.toLowerCase())) {
+        return { ...prev, [poolKey]: { ...current, banInput: "" } };
+      }
+      return {
+        ...prev,
+        [poolKey]: {
+          ...current,
+          banned: [...current.banned, nextBan],
+          banInput: ""
+        }
+      };
+    });
+  };
+
+  const removePoolBan = (poolKey: string, name: string) => {
+    setPoolOverrides((prev) => {
+      const current = prev[poolKey] ?? { banned: [], banInput: "", pinned: "" };
+      return {
+        ...prev,
+        [poolKey]: {
+          ...current,
+          banned: current.banned.filter(
+            (entry) => entry.toLowerCase() !== name.toLowerCase()
+          )
+        }
+      };
+    });
+  };
+
+  const updateWeakFocus = (focus: string) => {
+    const defaults = weakPointDefaults[focus] ?? weakPointDefaults.lats;
+    setWeakPoint({
+      focus,
+      option1: defaults.option1,
+      option2: defaults.option2
+    });
   };
 
 const clampWeight = (value: number) => Math.min(2, Math.max(0.5, value));
@@ -171,7 +353,9 @@ const updateProgramWeight = (templateId: number, weight: number) => {
       days_per_week: daysPerWeek,
       max_session_minutes: maxSessionMinutes,
       preferred_days: preferredDays,
-      confirm_overwrite: confirmOverwrite
+      confirm_overwrite: confirmOverwrite,
+      pool_preferences: poolPreferencesPayload,
+      weak_point_selection: weakPointSelectionPayload
     }),
     [
       userId,
@@ -182,7 +366,9 @@ const updateProgramWeight = (templateId: number, weight: number) => {
       daysPerWeek,
       maxSessionMinutes,
       preferredDays,
-      confirmOverwrite
+      confirmOverwrite,
+      poolPreferencesPayload,
+      weakPointSelectionPayload
     ]
   );
 
@@ -321,7 +507,7 @@ const updateProgramWeight = (templateId: number, weight: number) => {
             <div className="flex flex-wrap gap-2">
               {injuries.map((injury) => (
                 <Chip
-                  key={`${injury.name}-${injury.severity}`}
+                  key={injury.id}
                   className="flex items-center gap-2 bg-slate-800"
                 >
                   <span className="font-semibold text-white">{injury.name}</span>
@@ -332,10 +518,7 @@ const updateProgramWeight = (templateId: number, weight: number) => {
                     className="h-6 px-2 text-xs text-slate-300"
                     onClick={() =>
                       setInjuries((prev) =>
-                        prev.filter(
-                          (entry) =>
-                            !(entry.name === injury.name && entry.severity === injury.severity)
-                        )
+                        prev.filter((entry) => entry.id !== injury.id)
                       )
                     }
                   >
@@ -408,6 +591,104 @@ const updateProgramWeight = (templateId: number, weight: number) => {
             </div>
             <p className="text-xs text-slate-400">
               We filter templates and exercise pools based on what you can access.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-xs uppercase tracking-wide text-slate-400">
+              Weak point focus
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {Object.keys(weakPointDefaults).map((focus) => (
+                <Button
+                  key={focus}
+                  variant={weakPoint.focus === focus ? "primary" : "outline"}
+                  size="sm"
+                  onClick={() => updateWeakFocus(focus)}
+                >
+                  {focus.toUpperCase()}
+                </Button>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Input
+                value={weakPoint.option1}
+                onChange={(event) =>
+                  setWeakPoint((prev) => ({ ...prev, option1: event.target.value }))
+                }
+                placeholder="Primary weak-point exercise"
+              />
+              <Input
+                value={weakPoint.option2 ?? ""}
+                onChange={(event) =>
+                  setWeakPoint((prev) => ({ ...prev, option2: event.target.value }))
+                }
+                placeholder="Optional second exercise (auto-skipped when not recovered)"
+              />
+            </div>
+            <p className="text-xs text-slate-400">
+              Exercise 2 is used only when recovery looks good; otherwise we skip it.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-xs uppercase tracking-wide text-slate-400">
+              Exercise pool pins / bans
+            </p>
+            <div className="grid gap-3 md:grid-cols-2">
+              {poolKeys.map((poolKey) => {
+                const overrides = poolOverrides[poolKey] ?? {
+                  pinned: "",
+                  banned: [],
+                  banInput: ""
+                };
+                return (
+                  <div
+                    key={poolKey}
+                    className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/50 p-3"
+                  >
+                    <div className="flex items-center justify-between text-sm text-slate-200">
+                      <span className="font-semibold text-white">{poolKey.replace(/_/g, " ")}</span>
+                      <Chip className="bg-slate-900 text-xs uppercase text-slate-300">
+                        Pool
+                      </Chip>
+                    </div>
+                    <Input
+                      value={overrides.pinned}
+                      onChange={(event) => updatePoolPinned(poolKey, event.target.value)}
+                      placeholder="Pin exercise (always pick if allowed)"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      {overrides.banned.map((name) => (
+                        <Chip key={`${poolKey}-${name}`} className="bg-slate-800">
+                          <span className="text-xs text-slate-100">{name}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-[10px] text-slate-300"
+                            onClick={() => removePoolBan(poolKey, name)}
+                          >
+                            Remove
+                          </Button>
+                        </Chip>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={overrides.banInput}
+                        onChange={(event) => updateBanInput(poolKey, event.target.value)}
+                        placeholder="Ban exercise"
+                      />
+                      <Button size="sm" variant="outline" onClick={() => addPoolBan(poolKey)}>
+                        Ban
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-slate-400">
+              Pins override the resolver when possible; bans keep exercises out of a given pool.
             </p>
           </div>
         </Card>

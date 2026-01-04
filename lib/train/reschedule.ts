@@ -17,6 +17,9 @@ import type {
   EquipmentOption,
   PlannedSession,
   SelectedProgram,
+  PoolPreference,
+  WeakPointSelection,
+  SessionPlan,
   WizardInjury,
   WizardPayload
 } from "@/lib/wizard/types";
@@ -176,6 +179,90 @@ const asSchedule = (value: unknown): PlannedSession[] => {
     .filter(Boolean) as PlannedSession[];
 };
 
+const asPoolPreferences = (value: unknown): PoolPreference[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (!isRecord(entry) || typeof entry.pool_key !== "string") return null;
+      const pinned =
+        typeof entry.pinned === "string" && entry.pinned.trim().length ? entry.pinned : undefined;
+      const banned =
+        Array.isArray(entry.banned) && entry.banned.length > 0
+          ? entry.banned.filter((item): item is string => typeof item === "string" && item.length > 0)
+          : undefined;
+      return { pool_key: entry.pool_key, pinned, banned };
+    })
+    .filter(Boolean) as PoolPreference[];
+};
+
+const asWeakPointSelection = (value: unknown): WeakPointSelection | null => {
+  if (!isRecord(value)) return null;
+  const focus = typeof value.focus === "string" ? value.focus : null;
+  const option1 = typeof value.option1 === "string" ? value.option1 : null;
+  const option2 = typeof value.option2 === "string" ? value.option2 : undefined;
+  if (!focus || !option1) return null;
+  return { focus, option1, option2 };
+};
+
+const asSessionPlans = (value: unknown): SessionPlan[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (!isRecord(entry)) return null;
+      const program_session_key =
+        typeof entry.program_session_key === "string" ? entry.program_session_key : null;
+      const template_id =
+        typeof entry.template_id === "number" && Number.isFinite(entry.template_id)
+          ? entry.template_id
+          : null;
+      const focus = typeof entry.focus === "string" ? entry.focus : "Training session";
+      const label = typeof entry.label === "string" ? entry.label : "Program session";
+      const week_offset =
+        typeof entry.week_offset === "number" && Number.isFinite(entry.week_offset)
+          ? entry.week_offset
+          : 0;
+      const slots = Array.isArray((entry as { slots?: unknown }).slots)
+        ? ((entry as { slots?: unknown }).slots as unknown[]).map((slot) => {
+            if (!isRecord(slot)) return null;
+            return {
+              slot_key: typeof slot.slot_key === "string" ? slot.slot_key : "slot",
+              pool_key: typeof slot.pool_key === "string" ? slot.pool_key : "",
+              exercise_id:
+                typeof slot.exercise_id === "number" && Number.isFinite(slot.exercise_id)
+                  ? slot.exercise_id
+                  : null,
+              exercise_name: typeof slot.exercise_name === "string" ? slot.exercise_name : "exercise",
+              movement_pattern:
+                typeof slot.movement_pattern === "string" ? slot.movement_pattern : null,
+              primary_muscle_group_id:
+                typeof slot.primary_muscle_group_id === "number" ? slot.primary_muscle_group_id : null,
+              secondary_muscle_group_ids: Array.isArray(slot.secondary_muscle_group_ids)
+                ? (slot.secondary_muscle_group_ids as unknown[])
+                    .map((id) => (typeof id === "number" ? id : null))
+                    .filter((id): id is number => id !== null)
+                : [],
+              tags: Array.isArray(slot.tags)
+                ? slot.tags.filter((tag): tag is string => typeof tag === "string")
+                : [],
+              sets: typeof slot.sets === "number" ? slot.sets : undefined,
+              reps:
+                typeof slot.reps === "number" || typeof slot.reps === "string"
+                  ? slot.reps
+                  : null,
+              rir: typeof slot.rir === "number" ? slot.rir : null,
+              rpe: typeof slot.rpe === "number" ? slot.rpe : null,
+              optional: Boolean(slot.optional),
+              skip_reason: typeof slot.skip_reason === "string" ? slot.skip_reason : undefined
+            };
+          })
+            .filter(Boolean) as SessionPlan["slots"]
+        : [];
+      if (!program_session_key || template_id === null) return null;
+      return { program_session_key, template_id, focus, label, slots, week_offset };
+    })
+    .filter(Boolean) as SessionPlan[];
+};
+
 const asInjuries = (value: unknown): WizardInjury[] => {
   if (!Array.isArray(value)) return [];
   const parsed: Parameters<typeof ensureInjuryIds>[0] = [];
@@ -254,7 +341,10 @@ const upgradeActiveProgram = (value: unknown): ActiveProgramSnapshot | null => {
           recoveryLoad: 0,
           warnings: [],
           removedSlots: 0
-        }
+        },
+    pool_preferences: asPoolPreferences(value.pool_preferences),
+    weak_point_selection: asWeakPointSelection(value.weak_point_selection),
+    session_plans: asSessionPlans(value.session_plans)
   };
 };
 
@@ -263,7 +353,23 @@ const persistProgram = async (
   userId: string,
   program: ActiveProgramSnapshot
 ) => {
-  await supabase.from("users").update({ active_program_json: program }).eq("user_id", userId);
+  const { data, error } = await supabase
+    .from("users")
+    .update({ active_program_json: program })
+    .eq("user_id", userId)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    // Log error details for server-side debugging and surface failure to caller
+    // eslint-disable-next-line no-console
+    console.error("persistProgram: failed to update user active_program_json", error);
+    throw new Error(
+      error instanceof Error ? error.message : JSON.stringify(error)
+    );
+  }
+
+  return data;
 };
 
 const buildWeeklySchedule = (params: {

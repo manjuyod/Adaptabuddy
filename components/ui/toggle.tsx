@@ -1,4 +1,4 @@
-import { forwardRef, type ButtonHTMLAttributes } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 type ToggleProps = Omit<
@@ -7,11 +7,12 @@ type ToggleProps = Omit<
 > & {
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
+  children?: ReactNode;
 };
 
 export const Toggle = forwardRef<HTMLButtonElement, ToggleProps>(
   (
-    { className, checked = false, onCheckedChange, disabled, ...props },
+    { className, checked = false, onCheckedChange, disabled, children, ...props },
     ref
   ) => {
     return (
@@ -30,6 +31,11 @@ export const Toggle = forwardRef<HTMLButtonElement, ToggleProps>(
         )}
         {...props}
       >
+        {children ? (
+          <span className="absolute left-1 flex items-center pointer-events-none text-slate-300">
+            {children}
+          </span>
+        ) : null}
         <span
           className={cn(
             "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200",

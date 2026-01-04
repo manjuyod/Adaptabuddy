@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import {
-  createSupabaseRouteClient,
+  createSupabaseServerClient,
   ensureUserProfile,
   type SupabaseClientType
 } from "@/lib/supabase/server";
@@ -15,15 +15,11 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const response = NextResponse.next();
-  const supabase: SupabaseClientType = createSupabaseRouteClient(request, response);
+  const supabase: SupabaseClientType = await createSupabaseServerClient();
 
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError || !authData.user) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401, headers: response.headers }
-    );
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let parsed: z.infer<typeof requestSchema>;
@@ -36,7 +32,7 @@ export async function POST(request: NextRequest) {
         error: "Invalid payload",
         details: error instanceof Error ? error.message : String(error)
       },
-      { status: 400, headers: response.headers }
+      { status: 400 }
     );
   }
 
@@ -49,13 +45,13 @@ export async function POST(request: NextRequest) {
       profile,
       options: parsed
     });
-    return NextResponse.json(result, { headers: response.headers });
+    return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Reschedule failed";
     const status = message.includes("No active program") ? 409 : 500;
     return NextResponse.json(
       { error: message },
-      { status, headers: response.headers }
+      { status }
     );
   }
 }

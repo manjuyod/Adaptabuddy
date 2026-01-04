@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { ensureInjuryIds } from "./injuries";
-import type { EquipmentOption, FatigueProfile, WizardPayload } from "./types";
+import type {
+  EquipmentOption,
+  FatigueProfile,
+  PoolPreference,
+  WeakPointSelection,
+  WizardPayload
+} from "./types";
 
 export const equipmentOptions = [
   "barbell",
@@ -26,6 +32,18 @@ export const selectedProgramSchema = z.object({
   weight_override: z.number().min(0.5).max(2).optional()
 });
 
+const poolPreferenceSchema: z.ZodType<PoolPreference> = z.object({
+  pool_key: z.string().min(1),
+  pinned: z.string().min(1).optional(),
+  banned: z.array(z.string().min(1)).optional()
+});
+
+const weakPointSelectionSchema: z.ZodType<WeakPointSelection> = z.object({
+  focus: z.string().min(1),
+  option1: z.string().min(1),
+  option2: z.string().min(1).optional()
+});
+
 export const wizardPayloadSchema = z.object({
   user_id: z.string().uuid(),
   injuries: z.array(injurySchema).default([]),
@@ -37,7 +55,9 @@ export const wizardPayloadSchema = z.object({
   days_per_week: z.number().int().min(2).max(5),
   max_session_minutes: z.number().int().min(20).max(180).default(60),
   preferred_days: z.array(z.enum(dayOptions)).optional(),
-  confirm_overwrite: z.boolean().optional()
+  confirm_overwrite: z.boolean().optional(),
+  pool_preferences: z.array(poolPreferenceSchema).optional(),
+  weak_point_selection: weakPointSelectionSchema.optional().nullable()
 });
 
 export type WizardPayloadInput = z.infer<typeof wizardPayloadSchema>;
@@ -46,7 +66,9 @@ export const normalizeWizardPayload = (value: unknown): WizardPayload => {
   const parsed = wizardPayloadSchema.parse(value);
   return {
     ...parsed,
-    injuries: ensureInjuryIds(parsed.injuries)
+    injuries: ensureInjuryIds(parsed.injuries),
+    pool_preferences: parsed.pool_preferences ?? [],
+    weak_point_selection: parsed.weak_point_selection ?? null
   };
 };
 

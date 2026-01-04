@@ -191,6 +191,22 @@ type TrainingSetInsert = {
 
 type TrainingSetUpdate = Partial<TrainingSetInsert>;
 
+type PushSubscriptionRow = {
+  id: number;
+  user_id: string | null;
+  subscription: unknown;
+  created_at: string | null;
+};
+
+type PushSubscriptionInsert = {
+  id?: number;
+  user_id: string;
+  subscription: unknown;
+  created_at?: string | null;
+};
+
+type PushSubscriptionUpdate = Partial<PushSubscriptionInsert>;
+
 type SyncEventRow = {
   id: number;
   user_id: string | null;
@@ -320,6 +336,12 @@ export type Database = {
         Row: SyncEventRow;
         Insert: SyncEventInsert;
         Update: SyncEventUpdate;
+        Relationships: GenericRelationship[];
+      };
+      push_subscriptions: {
+        Row: PushSubscriptionRow;
+        Insert: PushSubscriptionInsert;
+        Update: PushSubscriptionUpdate;
         Relationships: GenericRelationship[];
       };
     };

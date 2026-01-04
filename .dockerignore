@@ -1,0 +1,14 @@
+node_modules
+.next
+out
+.git
+.gitignore
+npm-debug.log
+yarn-error.log
+pnpm-lock.yaml
+tmp
+coverage
+dist
+*.local
+.env
+.env.*.local

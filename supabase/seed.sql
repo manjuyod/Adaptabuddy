@@ -724,6 +724,136 @@ values
       "notes": "Keep at least 1-2 reps in reserve to preserve joints"
     }
   }$$::jsonb
+),
+(
+  'Hypertrophy Engine v1',
+  array['hypertrophy'],
+  'engine_pools',
+  1,
+  $${
+    "template_type": "hypertrophy_engine_v1",
+    "weeks": 4,
+    "pools": [
+      {
+        "pool_key": "squat_quad",
+        "selection_query": {"movement_pattern": "squat", "equipment": ["barbell", "dumbbell", "machine", "bodyweight"], "tags": ["hypertrophy", "engine_seed"]},
+        "fallback_pool_keys": ["hinge_hamstring"],
+        "default_exercise_names": ["Back Squat", "Front Squat", "Belt Squat", "Hack Squat", "Goblet Squat"]
+      },
+      {
+        "pool_key": "hinge_hamstring",
+        "selection_query": {"movement_pattern": "hinge", "equipment": ["barbell", "dumbbell"], "tags": ["hypertrophy", "engine_seed"]},
+        "fallback_pool_keys": ["squat_quad"],
+        "default_exercise_names": ["Barbell RDL", "Hip Thrust", "Glute Bridge", "Dumbbell RDL"]
+      },
+      {
+        "pool_key": "hpress_chest",
+        "selection_query": {"movement_pattern": "horizontal_press", "equipment": ["barbell", "dumbbell", "machine", "bodyweight"], "tags": ["hypertrophy", "engine_seed"]},
+        "fallback_pool_keys": ["vpress_delts"],
+        "default_exercise_names": ["Barbell Bench Press", "Incline DB Press", "Flat DB Press", "Dip", "Push-Up"]
+      },
+      {
+        "pool_key": "vpress_delts",
+        "selection_query": {"movement_pattern": "vertical_press", "equipment": ["barbell", "dumbbell", "machine"], "tags": ["hypertrophy", "engine_seed"]},
+        "fallback_pool_keys": ["delts_iso"],
+        "default_exercise_names": ["Overhead Press", "Arnold Press", "Standing DB Arnold Press"]
+      },
+      {
+        "pool_key": "vpull_lats",
+        "selection_query": {"movement_pattern": "vertical_pull", "equipment": ["machine", "cable", "bodyweight"], "tags": ["hypertrophy", "engine_seed"]},
+        "fallback_pool_keys": ["hpull_back"],
+        "default_exercise_names": ["Neutral-Grip Pullup", "Half-Kneeling 1-Arm Lat Pulldown", "Pull-Up", "Assisted Pull-Up"]
+      },
+      {
+        "pool_key": "hpull_back",
+        "selection_query": {"movement_pattern": "horizontal_pull", "equipment": ["barbell", "dumbbell", "cable", "machine"], "tags": ["hypertrophy", "engine_seed"]},
+        "fallback_pool_keys": ["vpull_lats"],
+        "default_exercise_names": ["Barbell Row", "1-Arm DB Row", "Cable Row", "Chest-Supported T-Bar Row", "Face Pull"]
+      },
+      {
+        "pool_key": "biceps",
+        "selection_query": {"movement_pattern": "elbow_flexion", "equipment": ["dumbbell", "cable"], "tags": ["hypertrophy", "engine_seed"]},
+        "fallback_pool_keys": [],
+        "default_exercise_names": ["Bayesian Curl", "Incline Curl", "Hammer Curl", "Bar Curl"]
+      },
+      {
+        "pool_key": "triceps",
+        "selection_query": {"movement_pattern": "elbow_extension", "equipment": ["dumbbell", "cable", "machine"], "tags": ["hypertrophy", "engine_seed"]},
+        "fallback_pool_keys": [],
+        "default_exercise_names": ["Triceps Pushdown", "DB Triceps Extension", "Skull Crusher"]
+      },
+      {
+        "pool_key": "delts_iso",
+        "selection_query": {"movement_pattern": "isolation", "equipment": ["dumbbell", "cable"], "tags": ["hypertrophy", "engine_seed"]},
+        "fallback_pool_keys": [],
+        "default_exercise_names": ["DB Lateral Raise", "Cross-Body Cable Y-Raise", "Cable Upright Row"]
+      },
+      {
+        "pool_key": "abs",
+        "selection_query": {"movement_pattern": "core_flexion", "equipment": ["bodyweight", "cable"], "tags": ["hypertrophy", "engine_seed"]},
+        "fallback_pool_keys": [],
+        "default_exercise_names": ["Cable Crunch", "Dead Bug", "Hanging Knee Raise"]
+      },
+      {
+        "pool_key": "calves",
+        "selection_query": {"movement_pattern": "calf", "equipment": ["dumbbell", "machine", "bodyweight"], "tags": ["hypertrophy", "engine_seed"]},
+        "fallback_pool_keys": [],
+        "default_exercise_names": ["Donkey Calf Raise", "DB Calf Jumps"]
+      }
+    ],
+    "weak_points": {
+      "lats": ["Neutral-Grip Pullup", "Half-Kneeling 1-Arm Lat Pulldown"],
+      "delts": ["DB Lateral Raise", "Arnold Press"],
+      "chest": ["Incline DB Press", "Flat DB Press"],
+      "glutes": ["Hip Thrust", "DB Bulgarian Split Squat"],
+      "triceps": ["Triceps Pushdown", "DB Triceps Extension"]
+    },
+    "sessions": [
+      {
+        "session_key": "hev1_full_body_a",
+        "focus": "Full Body A (AWP)",
+        "label": "Full Body AWP",
+        "archetype": "awp",
+        "slots": [
+          {"slot_key": "squat_primary", "pool_key": "squat_quad", "movement_pattern": "squat", "target_muscles": ["quads", "glutes"], "tags": ["compound", "hypertrophy"], "sets": 4, "reps": "6-10", "rir": 2},
+          {"slot_key": "press_horizontal", "pool_key": "hpress_chest", "movement_pattern": "horizontal_press", "target_muscles": ["chest"], "tags": ["compound", "hypertrophy"], "sets": 4, "reps": "8-12", "rir": 2},
+          {"slot_key": "row_horizontal", "pool_key": "hpull_back", "movement_pattern": "horizontal_pull", "target_muscles": ["upper-back", "lats"], "tags": ["compound", "hypertrophy"], "sets": 4, "reps": "8-12", "rir": 1},
+          {"slot_key": "vertical_press", "pool_key": "vpress_delts", "movement_pattern": "vertical_press", "target_muscles": ["delts"], "tags": ["compound", "hypertrophy"], "sets": 3, "reps": "8-10", "rir": 2},
+          {"slot_key": "weak_point_1", "pool_key": "vpull_lats", "movement_pattern": "vertical_pull", "target_muscles": ["lats"], "tags": ["weak_point"], "sets": 3, "reps": "8-12", "rir": 1},
+          {"slot_key": "triceps_iso", "pool_key": "triceps", "movement_pattern": "elbow_extension", "target_muscles": ["triceps"], "tags": ["isolation"], "sets": 3, "reps": "10-12", "rir": 2},
+          {"slot_key": "abs_core", "pool_key": "abs", "movement_pattern": "core_flexion", "target_muscles": ["abdominals"], "tags": ["core"], "sets": 3, "reps": "12-15", "rir": 2}
+        ]
+      },
+      {
+        "session_key": "hev1_full_body_b",
+        "focus": "Full Body B (Pull + Hinge)",
+        "label": "Full Body Pull",
+        "slots": [
+          {"slot_key": "hinge_main", "pool_key": "hinge_hamstring", "movement_pattern": "hinge", "target_muscles": ["hamstrings", "glutes"], "tags": ["compound", "hypertrophy"], "sets": 4, "reps": "8-10", "rir": 2},
+          {"slot_key": "vertical_pull", "pool_key": "vpull_lats", "movement_pattern": "vertical_pull", "target_muscles": ["lats"], "tags": ["compound", "hypertrophy"], "sets": 4, "reps": "8-12", "rir": 1},
+          {"slot_key": "press_secondary", "pool_key": "hpress_chest", "movement_pattern": "horizontal_press", "target_muscles": ["chest"], "tags": ["compound", "hypertrophy"], "sets": 3, "reps": "10-12", "rir": 2},
+          {"slot_key": "delts_iso", "pool_key": "delts_iso", "movement_pattern": "isolation", "target_muscles": ["delts"], "tags": ["isolation"], "sets": 3, "reps": "12-15", "rir": 2},
+          {"slot_key": "biceps_iso", "pool_key": "biceps", "movement_pattern": "elbow_flexion", "target_muscles": ["biceps"], "tags": ["isolation"], "sets": 3, "reps": "10-12", "rir": 2},
+          {"slot_key": "weak_point_2", "pool_key": "vpull_lats", "movement_pattern": "vertical_pull", "target_muscles": ["lats"], "tags": ["weak_point"], "sets": 2, "reps": "10-12", "rir": 2, "optional": true},
+          {"slot_key": "abs_brace", "pool_key": "abs", "movement_pattern": "core_flexion", "target_muscles": ["abdominals"], "tags": ["core"], "sets": 3, "reps": "12-15", "rir": 2}
+        ]
+      },
+      {
+        "session_key": "hev1_full_body_c",
+        "focus": "Full Body C (Pump)",
+        "label": "Full Body Pump",
+        "slots": [
+          {"slot_key": "squat_speed", "pool_key": "squat_quad", "movement_pattern": "squat", "target_muscles": ["quads"], "tags": ["compound", "hypertrophy"], "sets": 3, "reps": "10-12", "rir": 2},
+          {"slot_key": "row_back", "pool_key": "hpull_back", "movement_pattern": "horizontal_pull", "target_muscles": ["upper-back", "lats"], "tags": ["compound", "hypertrophy"], "sets": 3, "reps": "10-12", "rir": 2},
+          {"slot_key": "vertical_press_pump", "pool_key": "vpress_delts", "movement_pattern": "vertical_press", "target_muscles": ["delts"], "tags": ["hypertrophy"], "sets": 3, "reps": "10-12", "rir": 2},
+          {"slot_key": "triceps_finisher", "pool_key": "triceps", "movement_pattern": "elbow_extension", "target_muscles": ["triceps"], "tags": ["isolation"], "sets": 3, "reps": "12-15", "rir": 2},
+          {"slot_key": "biceps_finisher", "pool_key": "biceps", "movement_pattern": "elbow_flexion", "target_muscles": ["biceps"], "tags": ["isolation"], "sets": 2, "reps": "12-15", "rir": 2},
+          {"slot_key": "calves_strength", "pool_key": "calves", "movement_pattern": "calf", "target_muscles": ["calves"], "tags": ["isolation"], "sets": 4, "reps": "10-15", "rir": 2},
+          {"slot_key": "abs_rotation", "pool_key": "abs", "movement_pattern": "core_flexion", "target_muscles": ["abdominals"], "tags": ["core"], "sets": 3, "reps": "12-15", "rir": 2}
+        ]
+      }
+    ]
+  }$$::jsonb
 )
 on conflict (name, version) do update set
   disciplines = excluded.disciplines,
