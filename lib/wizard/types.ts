@@ -68,6 +68,7 @@ export type ResolvedSlot = {
   rpe?: number | null;
   optional?: boolean;
   skip_reason?: string | null;
+  applied_rules?: string[];
 };
 
 export type SessionPlan = {
@@ -116,6 +117,20 @@ export type PreviewResult = {
   removedSlots: number;
 };
 
+export type WeekRule = {
+  week: number;
+  volume_multiplier?: number;
+  rpe_floor?: number;
+  rpe_ceiling?: number;
+  deload?: boolean;
+  note?: string;
+};
+
+export type ProgramPerformanceCache = Record<
+  string,
+  { avg_rpe?: number | null; avg_rir?: number | null; pain?: number | null; last_session: string; samples: number }
+>;
+
 export type PlannedSession = {
   date: string;
   label: string;
@@ -127,7 +142,7 @@ export type PlannedSession = {
 
 export type ActiveProgramSnapshot = {
   seed: string;
-  seed_strategy: "static" | "reshuffle";
+  seed_strategy: "static" | "reshuffle" | "mixing_v1";
   plan_id: string;
   week_key: string;
   restart_counter: number;
@@ -145,4 +160,8 @@ export type ActiveProgramSnapshot = {
   pool_preferences?: PoolPreference[];
   weak_point_selection?: WeakPointSelection | null;
   session_plans?: SessionPlan[];
+  week_rules?: WeekRule[];
+  performance_cache?: ProgramPerformanceCache;
+  week_cursor?: number;
+  adaptations_log?: string[];
 };

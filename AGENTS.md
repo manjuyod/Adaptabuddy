@@ -5,10 +5,17 @@
 
 ## Wizard (P05)
 - UI: `app/(protected)/wizard/page.tsx` (server) + `wizard-client.tsx` (client). Multi-step: constraints -> program mix -> schedule -> preview/generate. Determinism via seed shown in preview.
-- Engine helpers: `lib/wizard/engine.ts` (seed derivation, template summaries, preview load calc, schedule builder), `lib/wizard/hypertrophy-engine.ts` (pool/slot resolver + weak-point logic), `lib/wizard/schemas.ts` (zod payload), `lib/wizard/types.ts`.
+- Engine helpers: `lib/wizard/engine.ts` (seed derivation, template summaries, preview load calc, schedule builder), `lib/wizard/hypertrophy-engine.ts` (pool/slot resolver + weak-point logic), `lib/wizard/program-mixing-engine.ts` (seeded constraint/scoring mixer for normalized program templates), `lib/wizard/template-normalization.ts` (schema/Zod + template validation), `lib/wizard/schemas.ts` (zod payload), `lib/wizard/types.ts`.
 - API routes: `POST /api/wizard/preview` (dry-run only) and `POST /api/wizard/generate` (persists injuries/preferences/active_program_json, upserts planned `training_sessions`; hypertrophy engine also seeds `training_exercises` + starter sets). Overwrite requires `confirm_overwrite` when an active program exists (route deletes prior plan_id sessions when confirmed).
 - Data contract (wizard payload): `user_id`, `injuries[{name,severity,notes?}]`, `fatigue_profile ("low"|"medium"|"high")`, optional `equipment_profile`, `selected_programs[{template_id, weight_override?}]`, `days_per_week (2-5)`, optional `max_session_minutes`, optional `preferred_days`, optional `confirm_overwrite`, optional `pool_preferences[{pool_key,pinned?,banned[]?}]`, optional `weak_point_selection{focus,option1,option2?}`.
-- Templates: pulled from `public.templates`; Hypertrophy Engine v1 template_json uses pools/slots/weak_points (template_type `hypertrophy_engine_v1`). Update Supabase typings if schema expands.
+- Templates: pulled from `public.templates`; normalized examples live in `agents_prompts/template_templatejson_example` and seed fixture `supabase/templates.normalized.json`. Hypertrophy Engine v1 template_json uses pools/slots/weak_points (template_type `hypertrophy_engine_v1`). Update Supabase typings if schema expands. Normalization migration: `supabase/migrations/02_template_normalization.sql` (adds GIN index + normalized program templates).
+- Program engine (P12): core logic in `lib/program/engine.ts`; API at `POST /api/program-engine` with actions `generate_schedule`, `resolve_slots`, `apply_week_rules`, `adapt_next_week`. Captures week rules/deloads, auto-regulation (RPE deltas/set scaling), substitutions, and fatigue/pain adaptation. Snapshot carries `week_rules`, `week_cursor`, `performance_cache`, and `session_plans` with `applied_rules`.
+
+## Start Menu (P13)
+- Routing: default redirect after auth is `/home`; `middleware.ts` protects `/home` and uses `resolveNextPath` for `next` query.
+- UI: `app/(protected)/home/page.tsx` with action tiles (Start→`/wizard`, Continue→`/train`, Stats→`/kpi`, Settings→`/settings`) and a reusable `CurrentRunCard` (`components/home/current-run-card.tsx`).
+- Data: `lib/home/run-summary.ts` reads `users.active_program_json`, `preferences`, and `save_meta_json` to surface plan names, week number (from week_cursor or week_key), next session (planned row lookup or schedule fallback), and last activity/completion.
+- Save state: `save_meta_json` column on `users` holds `last_activity_at`, `plan_started_at`, `last_completed_session_at` (also acceptable inside active_program_json). `POST /api/wizard/generate` now updates `save_meta_json` with plan start + last activity when committing a new program.
 
 ## Notifications (P09)
 - In-app center: `components/layout/notification-center.tsx` mounted in `app/(protected)/layout.tsx`, calls `GET /api/notifications` for reminders (24h/2h), missed-session warning, restart suggestion, pain trend warning.
@@ -36,7 +43,7 @@
 
 ## Testing
 - Vitest config at `vitest.config.ts`. Run `npm run test` or `npm run test:run`.
-- Current coverage: wizard schema/engine tests in `tests/wizard/*.test.ts`.
+- Current coverage: wizard schema/engine tests in `tests/wizard/*.test.ts`; program engine determinism/adaptation in `tests/program-engine.test.ts`; mixing engine + template drift guard in `tests/wizard/program-mixing-engine.test.ts` and `tests/template-normalization.test.ts`.
 - Add `npm run typecheck` and `npm run lint` before shipping changes to catch TS/ES issues.
 
 ## Dockerization / AWS (P10)
@@ -47,7 +54,7 @@
 - Env/secrets: store in Secrets Manager or SSM Parameter Store and wire into the task definition (public config vs server-only keys). Mention WAF as optional; add security headers via ALB (HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy; optional CSP).
 
 ## DB
-- Schema migration: `supabase/migrations/00_schema.sql` (users, exercises, templates, sessions, RLS, push_subscriptions).
+- Schema migration: `supabase/migrations/00_schema.sql` (users, exercises, templates, sessions, RLS, push_subscriptions) plus `01_add_save_meta_json.sql` (adds `users.save_meta_json` jsonb).
 - Seeds: `supabase/seed.sql` (muscle groups, exercises, templates). Idempotent; templates used by wizard.
 
 ## Conventions / cautions

@@ -5,6 +5,10 @@ import {
   buildHypertrophyPlan,
   isHypertrophyTemplate
 } from "@/lib/wizard/hypertrophy-engine";
+import {
+  normalizeProgramTemplates,
+  previewPlan as previewMixingPlan
+} from "@/lib/wizard/program-mixing-engine";
 import { normalizeWizardPayload } from "@/lib/wizard/schemas";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -64,6 +68,10 @@ export async function POST(request: NextRequest) {
       ? (templates[0].template_json)
       : null;
 
+  const normalizedPrograms = normalizeProgramTemplates(templates ?? []);
+  const isMixingPlan =
+    normalizedPrograms.length > 0 && normalizedPrograms.length === (templates?.length ?? 0);
+
   if (hypertrophyTemplate) {
     const { data: muscleGroups, error: muscleError } = await supabase
       .from("muscle_groups")
@@ -107,6 +115,40 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(preview, { headers: response.headers });
+  }
+
+  if (isMixingPlan) {
+    const { data: muscleGroups, error: muscleError } = await supabase
+      .from("muscle_groups")
+      .select("id, name, slug, region, parent_id, created_at");
+    if (muscleError || !muscleGroups) {
+      return NextResponse.json(
+        { error: "Failed to load muscle groups for preview" },
+        { status: 500, headers: response.headers }
+      );
+    }
+
+    const { data: exercises, error: exerciseError } = await supabase
+      .from("exercises")
+      .select(
+        "id, canonical_name, aliases, movement_pattern, equipment, is_bodyweight, primary_muscle_group_id, secondary_muscle_group_ids, tags, contraindications, default_warmups, default_warmdowns, media, created_at"
+      );
+
+    if (exerciseError || !exercises) {
+      return NextResponse.json(
+        { error: "Failed to load exercises for preview" },
+        { status: 500, headers: response.headers }
+      );
+    }
+
+    const plan = previewMixingPlan({
+      payload,
+      templates: normalizedPrograms,
+      exercises,
+      muscleGroups
+    });
+
+    return NextResponse.json(plan.preview, { headers: response.headers });
   }
 
   const preview = buildPreview(payload, templates);

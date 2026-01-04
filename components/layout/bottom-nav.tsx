@@ -8,7 +8,8 @@ import {
   Compass,
   Dumbbell,
   Settings,
-  LibraryBig
+  LibraryBig,
+  Home
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ type NavItem = {
 };
 
 const items: NavItem[] = [
+  { href: "/home" as Route, label: "Home", icon: Home },
   { href: "/train", label: "Train", icon: Dumbbell },
   { href: "/wizard", label: "Wizard", icon: Compass },
   { href: "/kpi", label: "KPI", icon: Activity },

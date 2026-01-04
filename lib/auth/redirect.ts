@@ -1,4 +1,7 @@
+import type { Route } from "next";
+
 const allowedNextPaths = [
+  "/home",
   "/train",
   "/wizard",
   "/kpi",
@@ -32,6 +35,8 @@ export const isProgramEmpty = (
 };
 
 export const defaultRedirectForProfile = (activeProgram: {
-  active_program_json: Record<string, unknown> | null;
-}): "/wizard" | "/train" =>
-  isProgramEmpty(activeProgram.active_program_json) ? "/wizard" : "/train";
+  active_program_json?: Record<string, unknown> | null;
+}): Route => {
+  void activeProgram;
+  return "/home" as Route;
+};

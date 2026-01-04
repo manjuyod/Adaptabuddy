@@ -8,6 +8,12 @@ Container-first deployment with an Application Load Balancer (ALB), TLS via ACM,
 - VPC with public subnets (for ALB) and private subnets with NAT (for Fargate tasks).
 - Supabase project with hosted credentials.
 
+## TLDR
+- push to main → Actions green
+- ECR shows latest + SHA
+- run task → logs show “Ready”
+- stop task when done
+
 ## 1) Build and push the image to ECR
 ```bash
 # Local smoke test

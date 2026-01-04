@@ -21,6 +21,12 @@ type GenericView = {
 
 type GenericFunction = { Args: Record<string, unknown>; Returns: unknown };
 
+export type SaveMeta = {
+  last_activity_at?: string;
+  plan_started_at?: string;
+  last_completed_session_at?: string;
+};
+
 export type UserProfile = {
   user_id: string;
   active_program_json: Record<string, unknown> | null;
@@ -32,6 +38,7 @@ export type UserProfile = {
   units_pref?: string;
   unit_conversion?: number;
   sex?: string;
+  save_meta_json: SaveMeta;
 };
 
 type MuscleGroupRow = {
@@ -124,6 +131,7 @@ type UserRow = {
   active_program_json: Record<string, unknown> | null;
   active_program_version: number;
   offline_sync_cursor: number;
+  save_meta_json: Record<string, unknown>;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -280,6 +288,7 @@ export type Database = {
           active_program_json?: Record<string, unknown> | null;
           active_program_version?: number;
           offline_sync_cursor?: number;
+          save_meta_json?: Record<string, unknown>;
           created_at?: string;
           updated_at?: string;
         };
@@ -293,6 +302,7 @@ export type Database = {
           units_pref?: string;
           unit_conversion?: number;
           sex?: string;
+          save_meta_json?: Record<string, unknown>;
         };
         Relationships: GenericRelationship[];
       };
@@ -379,6 +389,7 @@ const isUserProfilePayload = (
   units_pref?: unknown;
   unit_conversion?: unknown;
   sex?: unknown;
+  save_meta_json?: unknown;
 } => {
   return (
     typeof value === "object" &&
@@ -467,7 +478,7 @@ export const ensureUserProfile = async (
   const { data, error } = await userClient
     .from("users")
     .select(
-      "user_id, active_program_json, injuries, preferences, bodyweight, offline_sync_cursor, active_program_version, units_pref, unit_conversion, sex"
+      "user_id, active_program_json, injuries, preferences, bodyweight, offline_sync_cursor, active_program_version, units_pref, unit_conversion, sex, save_meta_json"
     )
     .eq("user_id", user.id)
     .maybeSingle();
@@ -496,6 +507,19 @@ export const ensureUserProfile = async (
   const injuries = Array.isArray(profileRow.injuries) ? profileRow.injuries : [];
   const preferences = isRecord(profileRow.preferences) ? profileRow.preferences : {};
   const activeProgram = isRecord(active_program_json) ? active_program_json : null;
+  const saveMeta: SaveMeta = {};
+  if (isRecord(profileRow.save_meta_json)) {
+    const meta = profileRow.save_meta_json;
+    if (typeof meta.last_activity_at === "string") {
+      saveMeta.last_activity_at = meta.last_activity_at;
+    }
+    if (typeof meta.plan_started_at === "string") {
+      saveMeta.plan_started_at = meta.plan_started_at;
+    }
+    if (typeof meta.last_completed_session_at === "string") {
+      saveMeta.last_completed_session_at = meta.last_completed_session_at;
+    }
+  }
 
   return {
     user_id,
@@ -511,7 +535,8 @@ export const ensureUserProfile = async (
       typeof active_program_version === "number" ? active_program_version : undefined,
     units_pref: typeof units_pref === "string" ? units_pref : undefined,
     unit_conversion: typeof unit_conversion === "number" ? unit_conversion : undefined,
-    sex: typeof sex === "string" ? sex : undefined
+    sex: typeof sex === "string" ? sex : undefined,
+    save_meta_json: saveMeta
   };
 };
 

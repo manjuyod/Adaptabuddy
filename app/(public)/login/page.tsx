@@ -42,7 +42,7 @@ function LoginForm() {
     }
 
     const body = (await response.json()) as { redirectPath?: string };
-    const destination = (body.redirectPath ?? "/train") as Route;
+    const destination = (body.redirectPath ?? "/home") as Route;
     router.replace(destination);
     router.refresh();
   };

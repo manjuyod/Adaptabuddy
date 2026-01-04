@@ -11,7 +11,13 @@ import {
   composeHypertrophySnapshot,
   isHypertrophyTemplate
 } from "@/lib/wizard/hypertrophy-engine";
+import {
+  composeMixingSnapshot,
+  generatePlan as generateMixingPlan,
+  normalizeProgramTemplates
+} from "@/lib/wizard/program-mixing-engine";
 import { normalizeWizardPayload } from "@/lib/wizard/schemas";
+import type { SessionPlan } from "@/lib/wizard/types";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
@@ -79,11 +85,14 @@ export async function POST(request: NextRequest) {
     templates.length === 1 && isHypertrophyTemplate(templates[0].template_json)
       ? (templates[0].template_json)
       : null;
+  const normalizedPrograms = normalizeProgramTemplates(templates ?? []);
+  const isMixingPlan =
+    normalizedPrograms.length > 0 && normalizedPrograms.length === (templates?.length ?? 0);
 
   let preview = null;
   let schedule = null;
   let snapshot = null;
-  let sessionPlans: ReturnType<typeof buildHypertrophyPlan>["sessionPlans"] | null = null;
+  let sessionPlans: SessionPlan[] | null = null;
 
   if (hypertrophyTemplate) {
     const { data: muscleGroups, error: muscleError } = await supabase
@@ -138,6 +147,44 @@ export async function POST(request: NextRequest) {
       preview: plan.preview,
       sessionPlans: plan.sessionPlans
     });
+  } else if (isMixingPlan) {
+    const { data: muscleGroups, error: muscleError } = await supabase
+      .from("muscle_groups")
+      .select("id, name, slug, region, parent_id, created_at");
+    if (muscleError || !muscleGroups) {
+      return NextResponse.json(
+        { error: "Failed to load muscle groups" },
+        { status: 500, headers: response.headers }
+      );
+    }
+
+    const { data: exercises, error: exerciseError } = await supabase
+      .from("exercises")
+      .select(
+        "id, canonical_name, aliases, movement_pattern, equipment, is_bodyweight, primary_muscle_group_id, secondary_muscle_group_ids, tags, contraindications, default_warmups, default_warmdowns, media, created_at"
+      );
+
+    if (exerciseError || !exercises) {
+      return NextResponse.json(
+        { error: "Failed to load exercises" },
+        { status: 500, headers: response.headers }
+      );
+    }
+
+    const plan = generateMixingPlan({
+      payload,
+      templates: normalizedPrograms,
+      exercises,
+      muscleGroups
+    });
+
+    preview = plan.preview;
+    schedule = plan.schedule;
+    sessionPlans = plan.sessionPlans;
+    snapshot = composeMixingSnapshot({
+      payload,
+      plan
+    });
   } else {
     const built = buildActiveProgramSnapshot(payload, templates);
     preview = built.preview;
@@ -157,6 +204,17 @@ export async function POST(request: NextRequest) {
     weak_point_selection: payload.weak_point_selection ?? existingPreferences.weak_point_selection
   };
 
+  const saveMetaFromProfile = isRecord(profile.save_meta_json) ? profile.save_meta_json : {};
+  const nowIso = new Date().toISOString();
+  const nextSaveMeta = {
+    ...saveMetaFromProfile,
+    plan_started_at:
+      typeof saveMetaFromProfile.plan_started_at === "string"
+        ? saveMetaFromProfile.plan_started_at
+        : nowIso,
+    last_activity_at: nowIso
+  };
+
   const previousPlanId =
     isRecord(profile.active_program_json) && typeof (profile.active_program_json as { plan_id?: unknown }).plan_id === "string"
       ? ((profile.active_program_json as { plan_id: string }).plan_id)
@@ -174,7 +232,8 @@ export async function POST(request: NextRequest) {
     .update({
       injuries: payload.injuries,
       preferences: updatedPreferences,
-      active_program_json: snapshot
+      active_program_json: snapshot,
+      save_meta_json: nextSaveMeta
     })
     .eq("user_id", authData.user.id);
 

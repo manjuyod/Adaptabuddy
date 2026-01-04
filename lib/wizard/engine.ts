@@ -1,5 +1,10 @@
 import { createHash } from "crypto";
 import { dayOptions } from "./schemas";
+import {
+  normalizeTemplateJson,
+  programTemplateSchema,
+  workoutTemplateSchema
+} from "./template-normalization";
 import type {
   ActiveProgramSnapshot,
   FatigueProfile,
@@ -15,6 +20,84 @@ type TemplateData = {
   template_json: unknown;
   disciplines?: string[] | null;
   methodology?: string | null;
+};
+
+const summarizeNormalizedTemplate = (template: TemplateData): TemplateSummary | null => {
+  const normalized = normalizeTemplateJson(template.template_json, {
+    fallbackName: template.name
+  });
+  if (!normalized || normalized.type === "hypertrophy") {
+    return null;
+  }
+
+  const base: Pick<TemplateSummary, "id" | "name" | "methodology" | "disciplines"> = {
+    id: template.id,
+    name: template.name,
+    methodology: template.methodology ?? null,
+    disciplines: template.disciplines ?? []
+  };
+
+  if (normalized.type === "program") {
+    const program = programTemplateSchema.parse(normalized.template);
+    const movementSets = Object.values(program.weekly_goals.movement_patterns ?? {}).reduce(
+      (sum, goal) => sum + goalSets(goal),
+      0
+    );
+    const muscleSets = Object.values(program.weekly_goals.muscle_groups ?? {}).reduce(
+      (sum, goal) => sum + goalSets(goal),
+      0
+    );
+    const slotSets = program.slot_blueprints.reduce(
+      (sum, slot) => sum + Math.round((slot.min_sets + slot.max_sets) / 2),
+      0
+    );
+
+    const estimatedSets = Math.max(12, Math.round(movementSets || muscleSets || slotSets || 0));
+    const sessionCount = Math.max(
+      2,
+      Math.min(5, Math.round(program.slot_blueprints.length / 2) || 3)
+    );
+    const focusHint =
+      Object.keys(program.weekly_goals.movement_patterns ?? {})[0] ??
+      program.tags[0] ??
+      template.methodology ??
+      template.disciplines?.[0] ??
+      "Program mix";
+
+    return {
+      ...base,
+      estimatedSets,
+      sessionCount,
+      focusHint
+    };
+  }
+
+  if (normalized.type === "workout" || normalized.type === "block") {
+    const workout = workoutTemplateSchema.parse(normalized.template);
+    const estimatedSets = Math.max(
+      8,
+      Math.round(
+        workout.slots.reduce(
+          (sum, slot) => sum + Math.round((slot.min_sets + slot.max_sets) / 2),
+          0
+        )
+      )
+    );
+    const focusHint =
+      workout.day_focus?.[0] ??
+      workout.tags[0] ??
+      template.methodology ??
+      template.disciplines?.[0] ??
+      "Workout";
+    return {
+      ...base,
+      estimatedSets,
+      sessionCount: 1,
+      focusHint
+    };
+  }
+
+  return null;
 };
 
 const fatigueLoadThreshold: Record<FatigueProfile, number> = {
@@ -41,6 +124,12 @@ const dayIndexMap: Record<(typeof dayOptions)[number], number> = {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
+
+const goalSets = (goal: unknown): number => {
+  if (!isRecord(goal)) return 0;
+  const sets = (goal as { sets?: unknown }).sets;
+  return typeof sets === "number" ? sets : 0;
+};
 
 const toIsoDate = (value: Date) => value.toISOString().slice(0, 10);
 
@@ -175,6 +264,9 @@ const focusFromTemplate = (templateJson: unknown): string | null => {
 };
 
 export const summarizeTemplate = (template: TemplateData): TemplateSummary => {
+  const normalizedSummary = summarizeNormalizedTemplate(template);
+  if (normalizedSummary) return normalizedSummary;
+
   const estimatedSets = estimateTotalSetsFromTemplate(template.template_json);
   const sessionCount = countSessionsInTemplate(template.template_json) || 3;
   const focusHint =

@@ -1,0 +1,315 @@
+[
+  {
+    "name": "DUP Powerlifting",
+    "disciplines": ["powerlifting"],
+    "methodology": "DUP",
+    "version": 1,
+    "template_json": {
+      "engine_version": "1",
+      "template_type": "program",
+      "canonical_name": "DUP Powerlifting",
+      "tags": ["powerlifting", "strength", "dup"],
+      "seed_salt": "dup-power",
+      "program_weight_default": 1,
+      "selection_policy": { "top_k": 5, "softmax_temperature": 0.9, "novelty_decay": 0.3 },
+      "weekly_goals": {
+        "movement_patterns": {
+          "squat": { "sets": 10, "priority": 1.1 },
+          "hinge": { "sets": 8, "priority": 1 },
+          "horizontal_press": { "sets": 10, "priority": 1.1 },
+          "horizontal_pull": { "sets": 8, "priority": 0.9 }
+        },
+        "muscle_groups": {
+          "quads": { "sets": 12, "priority": 1 },
+          "hamstrings": { "sets": 8, "priority": 1 },
+          "chest": { "sets": 10, "priority": 1 },
+          "back": { "sets": 10, "priority": 1 }
+        }
+      },
+      "slot_blueprints": [
+        { "slot_key": "main_squat", "movement_pattern": "squat", "priority": 1.1, "min_sets": 3, "max_sets": 5, "reps_hint": [3, 8], "rpe_hint": [6, 9], "recovery_cost_per_set": 3, "pool_key": "main_squat_pool", "required": true },
+        { "slot_key": "main_deadlift", "movement_pattern": "hinge", "priority": 1, "min_sets": 2, "max_sets": 4, "reps_hint": [3, 6], "rpe_hint": [6, 9], "recovery_cost_per_set": 3.2, "pool_key": "main_deadlift_pool", "required": true },
+        { "slot_key": "main_bench", "movement_pattern": "horizontal_press", "priority": 1, "min_sets": 3, "max_sets": 5, "reps_hint": [5, 10], "rpe_hint": [6, 9], "recovery_cost_per_set": 2.6, "pool_key": "main_bench_pool", "required": true },
+        { "slot_key": "row_accessory", "movement_pattern": "horizontal_pull", "priority": 0.9, "min_sets": 3, "max_sets": 4, "reps_hint": [6, 12], "rpe_hint": [6, 8], "recovery_cost_per_set": 2.2, "pool_key": "row_pool", "required": true },
+        { "slot_key": "press_accessory", "movement_pattern": "vertical_press", "priority": 0.8, "min_sets": 2, "max_sets": 4, "reps_hint": [8, 12], "rpe_hint": [6, 8], "recovery_cost_per_set": 2, "pool_key": "press_pool", "required": false }
+      ]
+    }
+  },
+  {
+    "name": "RP Hypertrophy",
+    "disciplines": ["hypertrophy"],
+    "methodology": "RP",
+    "version": 1,
+    "template_json": {
+      "engine_version": "1",
+      "template_type": "program",
+      "canonical_name": "RP Hypertrophy",
+      "tags": ["hypertrophy", "push-pull-legs"],
+      "seed_salt": "rp-hyp",
+      "program_weight_default": 1,
+      "selection_policy": { "top_k": 6, "softmax_temperature": 0.95, "novelty_decay": 0.25 },
+      "weekly_goals": {
+        "movement_patterns": {
+          "horizontal_press": { "sets": 12, "priority": 1 },
+          "vertical_press": { "sets": 6, "priority": 0.9 },
+          "horizontal_pull": { "sets": 12, "priority": 1 },
+          "squat": { "sets": 10, "priority": 1 },
+          "hinge": { "sets": 6, "priority": 0.9 }
+        },
+        "muscle_groups": {
+          "chest": { "sets": 12, "priority": 1 },
+          "delts": { "sets": 10, "priority": 0.9 },
+          "back": { "sets": 12, "priority": 1 },
+          "quads": { "sets": 10, "priority": 1 }
+        }
+      },
+      "slot_blueprints": [
+        { "slot_key": "primary_press", "movement_pattern": "horizontal_press", "priority": 1, "min_sets": 3, "max_sets": 5, "reps_hint": [8, 12], "rpe_hint": [6, 8], "recovery_cost_per_set": 2.3, "pool_key": "press_pool", "required": true },
+        { "slot_key": "secondary_press", "movement_pattern": "vertical_press", "priority": 0.9, "min_sets": 2, "max_sets": 4, "reps_hint": [8, 12], "rpe_hint": [6, 8], "recovery_cost_per_set": 2, "pool_key": "vertical_press_pool", "required": false },
+        { "slot_key": "primary_pull", "movement_pattern": "horizontal_pull", "priority": 1, "min_sets": 3, "max_sets": 4, "reps_hint": [8, 12], "rpe_hint": [6, 8], "recovery_cost_per_set": 2, "pool_key": "pull_pool", "required": true },
+        { "slot_key": "primary_squat", "movement_pattern": "squat", "priority": 1, "min_sets": 3, "max_sets": 4, "reps_hint": [6, 10], "rpe_hint": [6, 8], "recovery_cost_per_set": 2.6, "pool_key": "squat_pool", "required": true },
+        { "slot_key": "primary_hinge", "movement_pattern": "hinge", "priority": 0.9, "min_sets": 2, "max_sets": 3, "reps_hint": [6, 10], "rpe_hint": [6, 8], "recovery_cost_per_set": 2.8, "pool_key": "hinge_pool", "required": false }
+      ]
+    }
+  },
+  {
+    "name": "Calisthenics Progression",
+    "disciplines": ["calisthenics"],
+    "methodology": "volume-progression",
+    "version": 1,
+    "template_json": {
+      "engine_version": "1",
+      "template_type": "program",
+      "canonical_name": "Calisthenics Progression",
+      "tags": ["calisthenics", "bodyweight", "volume"],
+      "seed_salt": "cali",
+      "program_weight_default": 0.9,
+      "selection_policy": { "top_k": 5, "softmax_temperature": 0.85, "novelty_decay": 0.2 },
+      "weekly_goals": {
+        "movement_patterns": {
+          "horizontal_press": { "sets": 10, "priority": 1 },
+          "horizontal_pull": { "sets": 12, "priority": 1 },
+          "squat": { "sets": 10, "priority": 1 },
+          "hinge": { "sets": 4, "priority": 0.8 },
+          "core_flexion": { "sets": 6, "priority": 0.8 }
+        },
+        "muscle_groups": {
+          "chest": { "sets": 10, "priority": 1 },
+          "back": { "sets": 12, "priority": 1 },
+          "quads": { "sets": 10, "priority": 1 },
+          "glutes": { "sets": 6, "priority": 0.8 },
+          "abdominals": { "sets": 6, "priority": 0.8 }
+        }
+      },
+      "slot_blueprints": [
+        { "slot_key": "pushup_slot", "movement_pattern": "horizontal_press", "priority": 1, "min_sets": 3, "max_sets": 5, "reps_hint": [8, 15], "rpe_hint": [6, 8], "recovery_cost_per_set": 1.8, "pool_key": "push_pool", "required": true },
+        { "slot_key": "row_slot", "movement_pattern": "horizontal_pull", "priority": 1, "min_sets": 3, "max_sets": 5, "reps_hint": [8, 15], "rpe_hint": [6, 8], "recovery_cost_per_set": 1.8, "pool_key": "row_pool", "required": true },
+        { "slot_key": "squat_slot", "movement_pattern": "squat", "priority": 1, "min_sets": 3, "max_sets": 4, "reps_hint": [8, 15], "rpe_hint": [6, 8], "recovery_cost_per_set": 2, "pool_key": "squat_pool", "required": true },
+        { "slot_key": "hinge_slot", "movement_pattern": "hinge", "priority": 0.8, "min_sets": 2, "max_sets": 3, "reps_hint": [8, 12], "rpe_hint": [6, 8], "recovery_cost_per_set": 2, "pool_key": "hinge_pool", "required": false },
+        { "slot_key": "core_slot", "movement_pattern": "core_flexion", "priority": 0.8, "min_sets": 2, "max_sets": 3, "reps_hint": [10, 15], "rpe_hint": [6, 8], "recovery_cost_per_set": 1.4, "pool_key": "core_pool", "required": true }
+      ]
+    }
+  },
+  {
+    "name": "Hypertrophy Engine v1",
+    "disciplines": ["hypertrophy"],
+    "methodology": "engine_pools",
+    "version": 1,
+    "template_json": {
+      "engine_version": "1",
+      "template_type": "hypertrophy_engine_v1",
+      "canonical_name": "Hypertrophy Engine v1",
+      "tags": ["hypertrophy", "engine"],
+      "weeks": 4,
+      "pools": [
+        {
+          "pool_key": "squat_quad",
+          "selection_query": { "movement_pattern": "squat", "equipment": ["barbell", "dumbbell", "machine", "bodyweight"], "tags": ["hypertrophy", "engine_seed"] },
+          "fallback_pool_keys": ["hinge_hamstring"],
+          "default_exercise_names": ["Back Squat", "Front Squat", "Belt Squat", "Hack Squat", "Goblet Squat"]
+        },
+        {
+          "pool_key": "hinge_hamstring",
+          "selection_query": { "movement_pattern": "hinge", "equipment": ["barbell", "dumbbell"], "tags": ["hypertrophy", "engine_seed"] },
+          "fallback_pool_keys": ["squat_quad"],
+          "default_exercise_names": ["Barbell RDL", "Hip Thrust", "Glute Bridge", "Dumbbell RDL"]
+        },
+        {
+          "pool_key": "hpress_chest",
+          "selection_query": { "movement_pattern": "horizontal_press", "equipment": ["barbell", "dumbbell", "machine", "bodyweight"], "tags": ["hypertrophy", "engine_seed"] },
+          "fallback_pool_keys": ["vpress_delts"],
+          "default_exercise_names": ["Barbell Bench Press", "Incline DB Press", "Flat DB Press", "Dip", "Push-Up"]
+        },
+        {
+          "pool_key": "vpress_delts",
+          "selection_query": { "movement_pattern": "vertical_press", "equipment": ["barbell", "dumbbell", "machine"], "tags": ["hypertrophy", "engine_seed"] },
+          "fallback_pool_keys": ["delts_iso"],
+          "default_exercise_names": ["Overhead Press", "Arnold Press", "Standing DB Arnold Press"]
+        },
+        {
+          "pool_key": "vpull_lats",
+          "selection_query": { "movement_pattern": "vertical_pull", "equipment": ["machine", "cable", "bodyweight"], "tags": ["hypertrophy", "engine_seed"] },
+          "fallback_pool_keys": ["hpull_back"],
+          "default_exercise_names": ["Neutral-Grip Pullup", "Half-Kneeling 1-Arm Lat Pulldown", "Pull-Up", "Assisted Pull-Up"]
+        },
+        {
+          "pool_key": "hpull_back",
+          "selection_query": { "movement_pattern": "horizontal_pull", "equipment": ["barbell", "dumbbell", "cable", "machine"], "tags": ["hypertrophy", "engine_seed"] },
+          "fallback_pool_keys": ["vpull_lats"],
+          "default_exercise_names": ["Barbell Row", "1-Arm DB Row", "Cable Row", "Chest-Supported T-Bar Row", "Face Pull"]
+        },
+        {
+          "pool_key": "biceps",
+          "selection_query": { "movement_pattern": "elbow_flexion", "equipment": ["dumbbell", "cable"], "tags": ["hypertrophy", "engine_seed"] },
+          "fallback_pool_keys": [],
+          "default_exercise_names": ["Bayesian Curl", "Incline Curl", "Hammer Curl", "Bar Curl"]
+        },
+        {
+          "pool_key": "triceps",
+          "selection_query": { "movement_pattern": "elbow_extension", "equipment": ["dumbbell", "cable", "machine"], "tags": ["hypertrophy", "engine_seed"] },
+          "fallback_pool_keys": [],
+          "default_exercise_names": ["Triceps Pushdown", "DB Triceps Extension", "Skull Crusher"]
+        },
+        {
+          "pool_key": "delts_iso",
+          "selection_query": { "movement_pattern": "isolation", "equipment": ["dumbbell", "cable"], "tags": ["hypertrophy", "engine_seed"] },
+          "fallback_pool_keys": [],
+          "default_exercise_names": ["DB Lateral Raise", "Cross-Body Cable Y-Raise", "Cable Upright Row"]
+        },
+        {
+          "pool_key": "abs",
+          "selection_query": { "movement_pattern": "core_flexion", "equipment": ["bodyweight", "cable"], "tags": ["hypertrophy", "engine_seed"] },
+          "fallback_pool_keys": [],
+          "default_exercise_names": ["Cable Crunch", "Dead Bug", "Hanging Knee Raise"]
+        },
+        {
+          "pool_key": "calves",
+          "selection_query": { "movement_pattern": "calf", "equipment": ["dumbbell", "machine", "bodyweight"], "tags": ["hypertrophy", "engine_seed"] },
+          "fallback_pool_keys": [],
+          "default_exercise_names": ["Donkey Calf Raise", "DB Calf Jumps"]
+        }
+      ],
+      "weak_points": {
+        "lats": ["Neutral-Grip Pullup", "Half-Kneeling 1-Arm Lat Pulldown"],
+        "delts": ["DB Lateral Raise", "Arnold Press"],
+        "chest": ["Incline DB Press", "Flat DB Press"],
+        "glutes": ["Hip Thrust", "DB Bulgarian Split Squat"],
+        "triceps": ["Triceps Pushdown", "DB Triceps Extension"]
+      },
+      "sessions": [
+        {
+          "session_key": "hev1_full_body_a",
+          "focus": "Full Body A (AWP)",
+          "label": "Full Body AWP",
+          "archetype": "awp",
+          "slots": [
+            { "slot_key": "squat_primary", "pool_key": "squat_quad", "movement_pattern": "squat", "target_muscles": ["quads", "glutes"], "tags": ["compound", "hypertrophy"], "sets": 4, "reps": "6-10", "rir": 2 },
+            { "slot_key": "press_horizontal", "pool_key": "hpress_chest", "movement_pattern": "horizontal_press", "target_muscles": ["chest"], "tags": ["compound", "hypertrophy"], "sets": 4, "reps": "8-12", "rir": 2 },
+            { "slot_key": "row_horizontal", "pool_key": "hpull_back", "movement_pattern": "horizontal_pull", "target_muscles": ["upper-back", "lats"], "tags": ["compound", "hypertrophy"], "sets": 4, "reps": "8-12", "rir": 1 },
+            { "slot_key": "vertical_press", "pool_key": "vpress_delts", "movement_pattern": "vertical_press", "target_muscles": ["delts"], "tags": ["compound", "hypertrophy"], "sets": 3, "reps": "8-10", "rir": 2 },
+            { "slot_key": "weak_point_1", "pool_key": "vpull_lats", "movement_pattern": "vertical_pull", "target_muscles": ["lats"], "tags": ["weak_point"], "sets": 3, "reps": "8-12", "rir": 1 },
+            { "slot_key": "triceps_iso", "pool_key": "triceps", "movement_pattern": "elbow_extension", "target_muscles": ["triceps"], "tags": ["isolation"], "sets": 3, "reps": "10-12", "rir": 2 },
+            { "slot_key": "abs_core", "pool_key": "abs", "movement_pattern": "core_flexion", "target_muscles": ["abdominals"], "tags": ["core"], "sets": 3, "reps": "12-15", "rir": 2 }
+          ]
+        },
+        {
+          "session_key": "hev1_full_body_b",
+          "focus": "Full Body B (Pull + Hinge)",
+          "label": "Full Body Pull",
+          "slots": [
+            { "slot_key": "hinge_main", "pool_key": "hinge_hamstring", "movement_pattern": "hinge", "target_muscles": ["hamstrings", "glutes"], "tags": ["compound", "hypertrophy"], "sets": 4, "reps": "8-10", "rir": 2 },
+            { "slot_key": "vertical_pull", "pool_key": "vpull_lats", "movement_pattern": "vertical_pull", "target_muscles": ["lats"], "tags": ["compound", "hypertrophy"], "sets": 4, "reps": "8-12", "rir": 1 },
+            { "slot_key": "press_secondary", "pool_key": "hpress_chest", "movement_pattern": "horizontal_press", "target_muscles": ["chest"], "tags": ["compound", "hypertrophy"], "sets": 3, "reps": "10-12", "rir": 2 },
+            { "slot_key": "delts_iso", "pool_key": "delts_iso", "movement_pattern": "isolation", "target_muscles": ["delts"], "tags": ["isolation"], "sets": 3, "reps": "12-15", "rir": 2 },
+            { "slot_key": "biceps_iso", "pool_key": "biceps", "movement_pattern": "elbow_flexion", "target_muscles": ["biceps"], "tags": ["isolation"], "sets": 3, "reps": "10-12", "rir": 2 },
+            { "slot_key": "weak_point_2", "pool_key": "vpull_lats", "movement_pattern": "vertical_pull", "target_muscles": ["lats"], "tags": ["weak_point"], "sets": 2, "reps": "10-12", "rir": 2, "optional": true },
+            { "slot_key": "abs_brace", "pool_key": "abs", "movement_pattern": "core_flexion", "target_muscles": ["abdominals"], "tags": ["core"], "sets": 3, "reps": "12-15", "rir": 2 }
+          ]
+        },
+        {
+          "session_key": "hev1_full_body_c",
+          "focus": "Full Body C (Pump)",
+          "label": "Full Body Pump",
+          "slots": [
+            { "slot_key": "squat_speed", "pool_key": "squat_quad", "movement_pattern": "squat", "target_muscles": ["quads"], "tags": ["compound", "hypertrophy"], "sets": 3, "reps": "10-12", "rir": 2 },
+            { "slot_key": "row_back", "pool_key": "hpull_back", "movement_pattern": "horizontal_pull", "target_muscles": ["upper-back", "lats"], "tags": ["compound", "hypertrophy"], "sets": 3, "reps": "10-12", "rir": 2 },
+            { "slot_key": "vertical_press_pump", "pool_key": "vpress_delts", "movement_pattern": "vertical_press", "target_muscles": ["delts"], "tags": ["hypertrophy"], "sets": 3, "reps": "10-12", "rir": 2 },
+            { "slot_key": "triceps_finisher", "pool_key": "triceps", "movement_pattern": "elbow_extension", "target_muscles": ["triceps"], "tags": ["isolation"], "sets": 3, "reps": "12-15", "rir": 2 },
+            { "slot_key": "biceps_finisher", "pool_key": "biceps", "movement_pattern": "elbow_flexion", "target_muscles": ["biceps"], "tags": ["isolation"], "sets": 2, "reps": "12-15", "rir": 2 },
+            { "slot_key": "calves_strength", "pool_key": "calves", "movement_pattern": "calf", "target_muscles": ["calves"], "tags": ["isolation"], "sets": 4, "reps": "10-15", "rir": 2 },
+            { "slot_key": "abs_rotation", "pool_key": "abs", "movement_pattern": "core_flexion", "target_muscles": ["abdominals"], "tags": ["core"], "sets": 3, "reps": "12-15", "rir": 2 }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "Prime DUP Submax (Sumo Dead)",
+    "disciplines": ["powerlifting"],
+    "methodology": "prime_dup_submax",
+    "version": 1,
+    "template_json": {
+      "engine_version": "1",
+      "template_type": "program",
+      "canonical_name": "Prime DUP Submax (Sumo Dead)",
+      "tags": ["powerlifting", "sumo", "dup"],
+      "seed_salt": "prime-dup",
+      "program_weight_default": 1.1,
+      "selection_policy": { "top_k": 5, "softmax_temperature": 0.9, "novelty_decay": 0.3 },
+      "weekly_goals": {
+        "movement_patterns": {
+          "squat": { "sets": 10, "priority": 1.1 },
+          "hinge": { "sets": 10, "priority": 1.1 },
+          "horizontal_press": { "sets": 10, "priority": 1 }
+        },
+        "muscle_groups": {
+          "quads": { "sets": 12, "priority": 1.0 },
+          "hamstrings": { "sets": 10, "priority": 1.0 },
+          "chest": { "sets": 10, "priority": 1.0 },
+          "back": { "sets": 10, "priority": 1.0 }
+        }
+      },
+      "slot_blueprints": [
+        { "slot_key": "main_squat", "movement_pattern": "squat", "priority": 1.1, "min_sets": 3, "max_sets": 5, "reps_hint": [3, 6], "rpe_hint": [6, 9], "recovery_cost_per_set": 3.2, "pool_key": "main_squat_pool", "required": true },
+        { "slot_key": "main_deadlift", "movement_pattern": "hinge", "priority": 1.1, "min_sets": 2, "max_sets": 4, "reps_hint": [3, 6], "rpe_hint": [6, 9], "recovery_cost_per_set": 3.4, "pool_key": "main_deadlift_pool", "required": true },
+        { "slot_key": "main_bench", "movement_pattern": "horizontal_press", "priority": 1, "min_sets": 3, "max_sets": 5, "reps_hint": [5, 10], "rpe_hint": [6, 9], "recovery_cost_per_set": 2.6, "pool_key": "main_bench_pool", "required": true },
+        { "slot_key": "row_support", "movement_pattern": "horizontal_pull", "priority": 0.9, "min_sets": 3, "max_sets": 4, "reps_hint": [8, 12], "rpe_hint": [6, 8], "recovery_cost_per_set": 2.2, "pool_key": "row_pool", "required": true }
+      ]
+    }
+  },
+  {
+    "name": "5/3/1 Auto-Regulated DUP",
+    "disciplines": ["powerlifting"],
+    "methodology": "531_autoreg_dup",
+    "version": 1,
+    "template_json": {
+      "engine_version": "1",
+      "template_type": "program",
+      "canonical_name": "5/3/1 Auto-Regulated DUP",
+      "tags": ["powerlifting", "531", "dup"],
+      "seed_salt": "531-dup",
+      "program_weight_default": 1,
+      "selection_policy": { "top_k": 6, "softmax_temperature": 0.9, "novelty_decay": 0.35 },
+      "weekly_goals": {
+        "movement_patterns": {
+          "squat": { "sets": 8, "priority": 1 },
+          "hinge": { "sets": 8, "priority": 1 },
+          "horizontal_press": { "sets": 10, "priority": 1.1 },
+          "horizontal_pull": { "sets": 8, "priority": 0.9 }
+        },
+        "muscle_groups": {
+          "quads": { "sets": 10, "priority": 1 },
+          "hamstrings": { "sets": 8, "priority": 1 },
+          "chest": { "sets": 10, "priority": 1 },
+          "back": { "sets": 12, "priority": 1 }
+        }
+      },
+      "slot_blueprints": [
+        { "slot_key": "main_squat", "movement_pattern": "squat", "priority": 1, "min_sets": 3, "max_sets": 5, "reps_hint": [3, 8], "rpe_hint": [6, 9], "recovery_cost_per_set": 3, "pool_key": "main_squat_pool", "required": true },
+        { "slot_key": "main_bench", "movement_pattern": "horizontal_press", "priority": 1.1, "min_sets": 3, "max_sets": 6, "reps_hint": [3, 10], "rpe_hint": [6, 9], "recovery_cost_per_set": 2.7, "pool_key": "main_bench_pool", "required": true },
+        { "slot_key": "main_deadlift", "movement_pattern": "hinge", "priority": 1, "min_sets": 2, "max_sets": 4, "reps_hint": [3, 6], "rpe_hint": [6, 9], "recovery_cost_per_set": 3.2, "pool_key": "main_deadlift_pool", "required": true },
+        { "slot_key": "row_accessory", "movement_pattern": "horizontal_pull", "priority": 0.9, "min_sets": 3, "max_sets": 4, "reps_hint": [8, 12], "rpe_hint": [6, 8], "recovery_cost_per_set": 2.2, "pool_key": "row_pool", "required": true }
+      ]
+    }
+  }
+]
